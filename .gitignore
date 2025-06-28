@@ -1,0 +1,78 @@
+# Rust/Cargo
+/target/
+/src-tauri/target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Node.js/npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Tauri
+/src-tauri/target/
+/src-tauri/gen/
+/src-tauri/Cargo.lock
+/src-tauri/WixTools/
+
+# Build outputs
+/dist/
+build/
+/out/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS generated files
+Thumbs.db
+Desktop.ini
+
+# Backup files
+*.bak
+*.backup
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb

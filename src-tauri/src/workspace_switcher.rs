@@ -1,0 +1,447 @@
+use core_graphics::event::{CGEvent, CGEventTapLocation};
+use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+use core_graphics::geometry::{CGPoint, CGRect};
+use core_foundation::array::{CFArrayRef, CFArrayGetCount, CFArrayGetValueAtIndex};
+use core_foundation::base::{CFTypeRef, CFRelease};
+use core_foundation::number::{CFNumberRef, CFNumberGetValue, kCFNumberSInt64Type};
+use core_foundation::dictionary::CFDictionaryRef;
+use core_foundation::string::{CFStringRef, kCFStringEncodingUTF8};
+use foreign_types_shared::ForeignType;
+use cocoa::appkit::NSEvent;
+use cocoa::base::nil;
+use std::thread;
+use std::time::Duration;
+
+// =============================================================================
+// CORE GRAPHICS PRIVATE API BINDINGS
+// =============================================================================
+
+type CGSConnectionID = i32;
+type CGEventRef = *mut std::ffi::c_void;
+
+#[link(name = "CoreGraphics", kind = "framework")]
+extern "C" {
+    fn CFDictionaryGetValue(theDict: CFDictionaryRef, key: *const std::ffi::c_void) -> *const std::ffi::c_void;
+    fn CFStringCreateWithCString(
+        alloc: *const std::ffi::c_void,
+        cStr: *const std::ffi::c_char,
+        encoding: u32
+    ) -> CFStringRef;
+
+    fn CGSMainConnectionID() -> CGSConnectionID;
+    fn CGSCopyManagedDisplaySpaces(cid: CGSConnectionID) -> CFArrayRef;
+    fn CGEventSetIntegerValueField(event: CGEventRef, field: u32, value: i64);
+    fn CGEventSetDoubleValueField(event: CGEventRef, field: u32, value: f64);
+
+    fn CGGetDisplaysWithPoint(point: CGPoint, max_displays: u32, displays: *mut u32, display_count: *mut u32) -> i32;
+    fn CGMainDisplayID() -> u32;
+    fn CGSGetActiveSpace(cid: CGSConnectionID, display_id: u32) -> u64;
+    fn CGDisplayBounds(display: u32) -> CGRect;
+}
+
+// =============================================================================
+// CONSTANTS AND TYPES
+// =============================================================================
+
+// CGEvent field numbers for gesture events
+const FIELD_EVENT_TYPE: u32 = 0x37;           // 55: Event type (29=tracking, 30=phase)
+const FIELD_GESTURE_SUBTYPE: u32 = 0x6e;      // 110: Gesture subtype (23=horizontal swipe)
+const FIELD_GESTURE_PHASE: u32 = 0x84;        // 132: Gesture phase (1=begin, 4=end)
+const FIELD_GESTURE_PHASE_COPY: u32 = 0x86;   // 134: Mirror of gesture phase
+const FIELD_SWIPE_DELTA_X: u32 = 0x7c;        // 124: X-axis movement (double)
+const FIELD_SWIPE_DELTA_X_FLOAT: u32 = 0x87;  // 135: X-axis movement (float bits)
+const FIELD_MAGIC_CONSTANT_1: u32 = 0x77;     // 119: Magic constant
+const FIELD_MAGIC_CONSTANT_2: u32 = 0x8b;     // 139: Magic constant mirror
+const FIELD_GESTURE_ACTIVE: u32 = 0x7b;       // 123: Gesture active flag
+const FIELD_GESTURE_STATE: u32 = 0xa5;        // 165: Gesture state flag
+const FIELD_EVENT_FLAGS: u32 = 0x29;          // 41: Event flags
+const FIELD_TOUCH_COUNT: u32 = 0x88;          // 136: Touch count
+const FIELD_POSITION_X: u32 = 0x81;           // 129: Cumulative X position
+const FIELD_POSITION_Y: u32 = 0x82;           // 130: Cumulative Y position
+
+// Gesture event values
+const EVENT_TYPE_GESTURE_TRACKING: i64 = 0x1d;     // 29: Continuous gesture tracking
+const EVENT_TYPE_GESTURE_PHASE: i64 = 0x1e;        // 30: Gesture phase transition
+const GESTURE_SUBTYPE_HORIZONTAL_SWIPE: i64 = 0x17; // 23: Horizontal swipe gesture
+const GESTURE_PHASE_BEGIN: i64 = 1;                 // Begin gesture
+const GESTURE_PHASE_END: i64 = 4;                   // End/snap to workspace
+const EVENT_FLAGS_GESTURE: i64 = 0x81cf;            // Standard gesture event flags
+const GESTURE_MAGIC_CONSTANT: i64 = 0x36a0000000000000; // Required magic value
+
+// Gesture timing and movement
+const SWIPE_MOVEMENT_DELTA: f64 = 3.0;
+const GESTURE_PHASE_DELAY_MICROS: u64 = 2000;
+const POSITION_SCALE_FACTOR: f64 = 400.0;
+
+// Type unions for float/int bit pattern conversion
+#[repr(C)]
+union FloatBits {
+    float_value: f32,
+    int_bits: i32,
+}
+
+#[repr(C)]
+union DoubleBits {
+    double_value: f64,
+    int_bits: i64,
+}
+
+// =============================================================================
+// DISPLAY AND WORKSPACE DETECTION
+// =============================================================================
+
+#[derive(Debug, Clone)]
+pub struct DisplayInfo {
+    pub display_id: u32,
+    pub bounds: CGRect,
+    pub current_desktop: u32,
+}
+
+/// Get current mouse cursor position in global coordinates
+pub fn get_cursor_position() -> Result<CGPoint, String> {
+    unsafe {
+        let mouse_location = NSEvent::mouseLocation(nil);
+        let cursor_point = CGPoint::new(mouse_location.x as f64, mouse_location.y as f64);
+        Ok(cursor_point)
+    }
+}
+
+/// Find which display contains the given point
+pub fn find_display_at_point(point: CGPoint) -> Result<u32, String> {
+    unsafe {
+        let mut found_display_id: u32 = 0;
+        let mut display_count: u32 = 0;
+
+        let result = CGGetDisplaysWithPoint(point, 1, &mut found_display_id, &mut display_count);
+
+        if result == 0 && display_count > 0 {
+            Ok(found_display_id)
+        } else {
+            // Fallback to main display if point lookup fails
+            Ok(CGMainDisplayID())
+        }
+    }
+}
+
+/// Get properly ordered desktop spaces using CGSCopyManagedDisplaySpaces
+pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
+    unsafe {
+        let connection_id = CGSMainConnectionID();
+        let current_space_id = CGSGetActiveSpace(connection_id, display_id);
+
+        // Use CGSCopyManagedDisplaySpaces to get properly ordered spaces
+        let managed_spaces = CGSCopyManagedDisplaySpaces(connection_id);
+        if managed_spaces.is_null() {
+            return Err("CGSCopyManagedDisplaySpaces returned null".to_string());
+        }
+
+        let count = CFArrayGetCount(managed_spaces);
+
+        // Find the entry for our display (usually there's just one for the main display)
+        for i in 0..count {
+            let entry_ref = CFArrayGetValueAtIndex(managed_spaces, i);
+            if entry_ref.is_null() {
+                continue;
+            }
+
+            // Use raw CFDictionary access
+            let entry_dict = entry_ref as CFDictionaryRef;
+
+            // Create "Spaces" key string
+            let spaces_key_cstr = std::ffi::CString::new("Spaces").unwrap();
+            let spaces_key_cfstr = CFStringCreateWithCString(
+                std::ptr::null(),
+                spaces_key_cstr.as_ptr(),
+                kCFStringEncodingUTF8
+            );
+
+            // Try to get the spaces array from the dictionary
+            let spaces_array_ref = CFDictionaryGetValue(entry_dict, spaces_key_cfstr as *const std::ffi::c_void);
+            CFRelease(spaces_key_cfstr as CFTypeRef);
+
+            if !spaces_array_ref.is_null() {
+                let spaces_array = spaces_array_ref as CFArrayRef;
+                if spaces_array.is_null() {
+                    continue;
+                }
+
+                let spaces_count = CFArrayGetCount(spaces_array);
+                if spaces_count <= 0 {
+                    continue;
+                }
+
+                // Process all spaces to find current space
+                for j in 0..spaces_count {
+                    let space_ref = CFArrayGetValueAtIndex(spaces_array, j);
+                    if !space_ref.is_null() {
+                        // Parse space dictionary to get ManagedSpaceID
+                        let space_dict = space_ref as CFDictionaryRef;
+
+                        let space_id_key_cstr = std::ffi::CString::new("ManagedSpaceID").unwrap();
+                        let space_id_key_cfstr = CFStringCreateWithCString(
+                            std::ptr::null(),
+                            space_id_key_cstr.as_ptr(),
+                            kCFStringEncodingUTF8
+                        );
+
+                        let space_id_value_ref = CFDictionaryGetValue(space_dict, space_id_key_cfstr as *const std::ffi::c_void);
+                        CFRelease(space_id_key_cfstr as CFTypeRef);
+
+                        if !space_id_value_ref.is_null() {
+                            let mut space_id_value: i64 = 0;
+                            let success = CFNumberGetValue(
+                                space_id_value_ref as CFNumberRef,
+                                kCFNumberSInt64Type,
+                                &mut space_id_value as *mut i64 as *mut std::ffi::c_void
+                            );
+
+                            if success && space_id_value > 0 && space_id_value as u64 == current_space_id {
+                                let desktop_num = j + 1; // 1-based desktop numbers
+                                CFRelease(managed_spaces as CFTypeRef);
+                                return Ok(desktop_num as u32);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        CFRelease(managed_spaces as CFTypeRef);
+        Err("Could not find current space in any display's ordered spaces".to_string())
+    }
+}
+
+/// Get current desktop number for a specific display
+pub fn get_desktop_for_display(display_id: u32) -> Result<u32, String> {
+    get_ordered_desktop_spaces(display_id)
+}
+
+/// Get display info for the display containing the cursor
+pub fn get_cursor_display_info() -> Result<DisplayInfo, String> {
+    let cursor_pos = get_cursor_position()?;
+    let display_id = find_display_at_point(cursor_pos)?;
+    let current_desktop = get_desktop_for_display(display_id)?;
+    let display_bounds = unsafe { CGDisplayBounds(display_id) };
+
+    Ok(DisplayInfo {
+        display_id,
+        bounds: display_bounds,
+        current_desktop,
+    })
+}
+
+/// Get current desktop number for the display containing the cursor
+pub fn get_current_desktop() -> Result<u32, String> {
+    let display_info = get_cursor_display_info()?;
+    Ok(display_info.current_desktop)
+}
+
+/// Count total number of desktops/spaces for a specific display
+pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
+    unsafe {
+        let connection_id = CGSMainConnectionID();
+        let managed_spaces = CGSCopyManagedDisplaySpaces(connection_id);
+        
+        if managed_spaces.is_null() {
+            return Err("Failed to get managed display spaces".to_string());
+        }
+
+        let display_count = CFArrayGetCount(managed_spaces);
+
+        // Search through display entries to find our display
+        for i in 0..display_count {
+            let entry_ref = CFArrayGetValueAtIndex(managed_spaces, i);
+            if entry_ref.is_null() {
+                continue;
+            }
+
+            let entry_dict = entry_ref as CFDictionaryRef;
+
+            // Create "Spaces" key for dictionary lookup
+            let spaces_key_cstr = std::ffi::CString::new("Spaces").unwrap();
+            let spaces_key_cfstr = CFStringCreateWithCString(
+                std::ptr::null(),
+                spaces_key_cstr.as_ptr(),
+                kCFStringEncodingUTF8
+            );
+
+            // Get spaces array from dictionary
+            let spaces_array_ref = CFDictionaryGetValue(entry_dict, spaces_key_cfstr as *const std::ffi::c_void);
+            CFRelease(spaces_key_cfstr as CFTypeRef);
+
+            if !spaces_array_ref.is_null() {
+                let spaces_array = spaces_array_ref as CFArrayRef;
+                if !spaces_array.is_null() {
+                    let spaces_count = CFArrayGetCount(spaces_array);
+                    if spaces_count > 0 {
+                        CFRelease(managed_spaces as CFTypeRef);
+                        return Ok(spaces_count as u32);
+                    }
+                }
+            }
+        }
+
+        CFRelease(managed_spaces as CFTypeRef);
+        Err("No spaces found for display".to_string())
+    }
+}
+
+/// Count total desktops for the display containing the cursor
+pub fn count_total_desktops() -> Result<u32, String> {
+    let cursor_pos = get_cursor_position()?;
+    let display_id = find_display_at_point(cursor_pos)?;
+    count_desktops_for_display(display_id)
+}
+
+/// Get current and total desktop counts for cursor's display
+pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
+    let cursor_pos = get_cursor_position()?;
+    let display_id = find_display_at_point(cursor_pos)?;
+    let current_desktop = get_desktop_for_display(display_id)?;
+    let total_desktops = count_desktops_for_display(display_id)?;
+    Ok((current_desktop, total_desktops))
+}
+
+
+// =============================================================================
+// SYNTHETIC GESTURE GENERATION
+// =============================================================================
+
+/// Create and post synthetic gesture events for workspace switching
+/// 
+/// Generates CGEvents that mimic a 3-finger horizontal swipe gesture.
+/// This bypasses the need for actual touch input by directly posting the 
+/// essential gesture event fields that macOS recognizes for workspace switching.
+fn create_synthetic_gesture(
+    event_source: &CGEventSource,
+    gesture_phase: i64,
+    swipe_direction_right: bool,
+    include_position_data: bool
+) -> Result<(), String> {
+    // Create gesture phase event and tracking event
+    let phase_event = CGEvent::new(event_source.clone())
+        .map_err(|_| "Failed to create phase event")?;
+    let tracking_event = CGEvent::new(event_source.clone())
+        .map_err(|_| "Failed to create tracking event")?;
+
+    // Calculate movement values
+    let movement_delta = if swipe_direction_right { SWIPE_MOVEMENT_DELTA } else { -SWIPE_MOVEMENT_DELTA };
+    let scaled_movement = movement_delta * POSITION_SCALE_FACTOR;
+
+    // Extract magic constant from bit pattern
+    let magic_constant = unsafe {
+        let magic_bits = DoubleBits { int_bits: GESTURE_MAGIC_CONSTANT };
+        magic_bits.double_value
+    };
+
+    unsafe {
+        // === PHASE EVENT: Gesture Phase Transition ===
+        
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_EVENT_TYPE, EVENT_TYPE_GESTURE_PHASE);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_SUBTYPE, GESTURE_SUBTYPE_HORIZONTAL_SWIPE);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_PHASE, gesture_phase);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_PHASE_COPY, gesture_phase);
+
+        // Movement data in multiple formats
+        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_SWIPE_DELTA_X, movement_delta);
+        
+        let movement_as_float_bits = {
+            let float_bits = FloatBits { float_value: movement_delta as f32 };
+            float_bits.int_bits as i64
+        };
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_SWIPE_DELTA_X_FLOAT, movement_as_float_bits);
+
+        // Required magic constants
+        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_MAGIC_CONSTANT_1, magic_constant);
+        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_MAGIC_CONSTANT_2, magic_constant);
+
+        // Gesture state flags
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_ACTIVE, 1);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_STATE, 1);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_EVENT_FLAGS, EVENT_FLAGS_GESTURE);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_TOUCH_COUNT, 0);
+
+        // Position data (only during snap phase)
+        if include_position_data {
+            let cumulative_position = scaled_movement * 2.0;
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_POSITION_X, cumulative_position);
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_POSITION_Y, 0.0);
+        }
+
+        // === TRACKING EVENT: Gesture Tracking ===
+        
+        CGEventSetIntegerValueField(tracking_event.as_ptr() as CGEventRef, FIELD_EVENT_TYPE, EVENT_TYPE_GESTURE_TRACKING);
+        CGEventSetIntegerValueField(tracking_event.as_ptr() as CGEventRef, FIELD_EVENT_FLAGS, EVENT_FLAGS_GESTURE);
+    }
+
+    // Post events to system
+    phase_event.post(CGEventTapLocation::HID);
+    tracking_event.post(CGEventTapLocation::HID);
+
+    Ok(())
+}
+
+// =============================================================================
+// PUBLIC WORKSPACE SWITCHING API
+// =============================================================================
+
+/// Switch to adjacent macOS workspace using synthetic gesture simulation
+/// 
+/// Simulates a 3-finger horizontal swipe by posting synthetic CGEvents.
+/// Uses a two-phase approach that mimics real gesture behavior:
+/// 1. Begin gesture (phase 1) - initiates workspace transition animation
+/// 2. End gesture (phase 4) - completes transition and snaps to target workspace
+pub fn switch_to_adjacent_workspace(move_right: bool) -> Result<(), String> {
+    let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+        .map_err(|_| "Failed to create CGEventSource")?;
+
+    // Phase 1: Begin gesture
+    create_synthetic_gesture(&event_source, GESTURE_PHASE_BEGIN, move_right, false)?;
+
+    // Brief delay between phases (mimics natural gesture timing)
+    thread::sleep(Duration::from_micros(GESTURE_PHASE_DELAY_MICROS));
+
+    // Phase 2: End gesture with position data
+    create_synthetic_gesture(&event_source, GESTURE_PHASE_END, move_right, true)?;
+
+    Ok(())
+}
+
+/// Switch to the workspace on the left (with bounds checking)
+pub fn switch_workspace_left() -> Result<(), String> {
+    let (current_desktop, _total_desktops) = get_desktop_bounds()?;
+
+    if current_desktop <= 1 {
+        return Err("Already at the leftmost workspace".to_string());
+    }
+
+    switch_to_adjacent_workspace(false)
+}
+
+/// Switch to the workspace on the right (with bounds checking)
+pub fn switch_workspace_right() -> Result<(), String> {
+    let (current_desktop, total_desktops) = get_desktop_bounds()?;
+
+    if current_desktop >= total_desktops {
+        return Err("Already at the rightmost workspace".to_string());
+    }
+
+    switch_to_adjacent_workspace(true)
+}
+
+// Legacy function aliases for backward compatibility
+pub fn switch_left() -> Result<(), String> {
+    switch_workspace_left()
+}
+
+pub fn switch_right() -> Result<(), String> {
+    switch_workspace_right()
+}
+
+pub fn switch_to_adjacent_space(to_right: bool) -> Result<(), String> {
+    switch_to_adjacent_workspace(to_right)
+}
+
+pub fn get_current_context_desktop() -> Result<u32, String> {
+    get_current_desktop()
+}

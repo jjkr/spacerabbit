@@ -1,0 +1,37 @@
+[package]
+name = "quickspace"
+version = "1.0.0"
+description = "Simple Tauri app with global hotkey support"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+tauri-build = { version = "2.3", features = [] }
+
+[dependencies]
+tauri = { version = "2.3", features = [ "tray-icon", "macos-private-api"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri-plugin-shell = "2.3"
+global-hotkey = "0.4"
+tokio = { version = "1", features = ["full"] }
+# Added for macOS workspace switching
+core-graphics = "0.23"
+core-foundation = "0.9"
+foreign-types-shared = "0.3"
+libc = "0.2"
+# Added for Cocoa mouse position
+cocoa = "0.25"
+
+[features]
+# this feature is used for production builds or when `devPath` points to the filesystem
+# DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
+
+[[bin]]
+name = "quickspace"
+path = "src/main.rs"
