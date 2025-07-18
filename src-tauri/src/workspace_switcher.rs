@@ -43,31 +43,6 @@ extern "C" {
 // CONSTANTS AND TYPES
 // =============================================================================
 
-// CGEvent field numbers for gesture events
-const FIELD_EVENT_TYPE: u32 = 0x37;           // 55: Event type (29=tracking, 30=phase)
-const FIELD_GESTURE_SUBTYPE: u32 = 0x6e;      // 110: Gesture subtype (23=horizontal swipe)
-const FIELD_GESTURE_PHASE: u32 = 0x84;        // 132: Gesture phase (1=begin, 4=end)
-const FIELD_GESTURE_PHASE_COPY: u32 = 0x86;   // 134: Mirror of gesture phase
-const FIELD_SWIPE_DELTA_X: u32 = 0x7c;        // 124: X-axis movement (double)
-const FIELD_SWIPE_DELTA_X_FLOAT: u32 = 0x87;  // 135: X-axis movement (float bits)
-const FIELD_MAGIC_CONSTANT_1: u32 = 0x77;     // 119: Magic constant
-const FIELD_MAGIC_CONSTANT_2: u32 = 0x8b;     // 139: Magic constant mirror
-const FIELD_GESTURE_ACTIVE: u32 = 0x7b;       // 123: Gesture active flag
-const FIELD_GESTURE_STATE: u32 = 0xa5;        // 165: Gesture state flag
-const FIELD_EVENT_FLAGS: u32 = 0x29;          // 41: Event flags
-const FIELD_TOUCH_COUNT: u32 = 0x88;          // 136: Touch count
-const FIELD_POSITION_X: u32 = 0x81;           // 129: Cumulative X position
-const FIELD_POSITION_Y: u32 = 0x82;           // 130: Cumulative Y position
-
-// Gesture event values
-const EVENT_TYPE_GESTURE_TRACKING: i64 = 0x1d;     // 29: Continuous gesture tracking
-const EVENT_TYPE_GESTURE_PHASE: i64 = 0x1e;        // 30: Gesture phase transition
-const GESTURE_SUBTYPE_HORIZONTAL_SWIPE: i64 = 0x17; // 23: Horizontal swipe gesture
-const GESTURE_PHASE_BEGIN: i64 = 1;                 // Begin gesture
-const GESTURE_PHASE_END: i64 = 4;                   // End/snap to workspace
-const EVENT_FLAGS_GESTURE: i64 = 0x81cf;            // Standard gesture event flags
-const GESTURE_MAGIC_CONSTANT: i64 = 0x36a0000000000000; // Required magic value
-
 // Gesture timing and movement
 const SWIPE_MOVEMENT_DELTA: f64 = 3.0;
 const GESTURE_PHASE_DELAY_MICROS: u64 = 2000;
@@ -328,55 +303,84 @@ fn create_synthetic_gesture(
     let movement_delta = if swipe_direction_right { SWIPE_MOVEMENT_DELTA } else { -SWIPE_MOVEMENT_DELTA };
     let scaled_movement = movement_delta * POSITION_SCALE_FACTOR;
 
-    // Extract magic constant from bit pattern
+    // Extract magic constant from bit pattern - 0x36a0000000000000 required for gesture recognition
     let magic_constant = unsafe {
-        let magic_bits = DoubleBits { int_bits: GESTURE_MAGIC_CONSTANT };
+        let magic_bits = DoubleBits { int_bits: 0x36a0000000000000 };
         magic_bits.double_value
     };
 
     unsafe {
         // === PHASE EVENT: Gesture Phase Transition ===
         
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_EVENT_TYPE, EVENT_TYPE_GESTURE_PHASE);
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_SUBTYPE, GESTURE_SUBTYPE_HORIZONTAL_SWIPE);
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_PHASE, gesture_phase);
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_PHASE_COPY, gesture_phase);
-
-        // Movement data in multiple formats
-        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_SWIPE_DELTA_X, movement_delta);
+        // Field 0x37 (55): Event type - 0x1e (30) for gesture phase transition
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x37, 0x1e);
         
-        let movement_as_float_bits = {
-            let float_bits = FloatBits { float_value: movement_delta as f32 };
-            float_bits.int_bits as i64
-        };
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_SWIPE_DELTA_X_FLOAT, movement_as_float_bits);
+        // Field 0x6e (110): Gesture subtype - 0x17 (23) for horizontal swipe gesture
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x6e, 0x17);
+        
+        // Field 0x84 (132): Gesture phase - 1 for begin, 4 for end/snap to workspace
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x84, gesture_phase);
+        
+        // Field 0x86 (134): Mirror of gesture phase
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x86, gesture_phase);
+
+        // Movement data
+        // Field 0x7c (124): X-axis movement delta as double
+        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, movement_delta);
+        
+        //let movement_as_float_bits = {
+        //    let float_bits = FloatBits { float_value: movement_delta as f32 };
+        //    float_bits.int_bits as i64
+        //};
+        //// Field 0x87 (135): X-axis movement as float bit pattern
+        //CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x87, movement_as_float_bits);
 
         // Required magic constants
-        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_MAGIC_CONSTANT_1, magic_constant);
-        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_MAGIC_CONSTANT_2, magic_constant);
+        // Field 0x77 (119): Magic constant - 0x36a0000000000000 required for gesture recognition
+        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x77, 0.0);
+        
+        // Field 0x8b (139): Magic constant mirror
+        CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x8b, 0.0);
 
         // Gesture state flags
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_ACTIVE, 1);
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_GESTURE_STATE, 1);
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_EVENT_FLAGS, EVENT_FLAGS_GESTURE);
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, FIELD_TOUCH_COUNT, 0);
+        // Field 0x7b (123): Gesture active flag - 1 indicates gesture is active
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x7b, 1);
+        
+        // Field 0xa5 (165): Gesture state flag - 1 indicates gesture state is active
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0xa5, 1);
+        
+        // Field 0x29 (41): Event flags - 0x81cf standard gesture event flags
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x29, 0x81cf);
+        
+        // Field 0x88 (136): Touch count - 0 for synthetic gesture
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x88, 0);
 
         // Position data (only during snap phase)
         if include_position_data {
-            let cumulative_position = scaled_movement * 2.0;
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_POSITION_X, cumulative_position);
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, FIELD_POSITION_Y, 0.0);
+            let cumulative_position = scaled_movement * 4.0;
+            // Field 0x81 (129): Final X position for workspace snap
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x81, cumulative_position);
+            
+            // Field 0x82 (130): Final X position copy
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x82, cumulative_position);
         }
 
         // === TRACKING EVENT: Gesture Tracking ===
         
-        CGEventSetIntegerValueField(tracking_event.as_ptr() as CGEventRef, FIELD_EVENT_TYPE, EVENT_TYPE_GESTURE_TRACKING);
-        CGEventSetIntegerValueField(tracking_event.as_ptr() as CGEventRef, FIELD_EVENT_FLAGS, EVENT_FLAGS_GESTURE);
+        // Field 0x37 (55): Event type - 0x1d (29) for continuous gesture tracking
+        CGEventSetIntegerValueField(tracking_event.as_ptr() as CGEventRef, 0x37, 0x1d);
+        
+        // Field 0x29 (41): Event flags - 0x81cf standard gesture event flags
+        CGEventSetIntegerValueField(tracking_event.as_ptr() as CGEventRef, 0x29, 0x81cf);
     }
 
     // Post events to system
     phase_event.post(CGEventTapLocation::HID);
-    tracking_event.post(CGEventTapLocation::HID);
+    //if include_position_data {
+    //    // DEBUG: skip
+    //    return Ok(());
+    //}
+    //tracking_event.post(CGEventTapLocation::HID);
 
     Ok(())
 }
@@ -395,14 +399,14 @@ pub fn switch_to_adjacent_workspace(move_right: bool) -> Result<(), String> {
     let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
         .map_err(|_| "Failed to create CGEventSource")?;
 
-    // Phase 1: Begin gesture
-    create_synthetic_gesture(&event_source, GESTURE_PHASE_BEGIN, move_right, false)?;
+    // Phase 1: Begin gesture (phase 1)
+    create_synthetic_gesture(&event_source, 1, move_right, false)?;
 
     // Brief delay between phases (mimics natural gesture timing)
     thread::sleep(Duration::from_micros(GESTURE_PHASE_DELAY_MICROS));
 
-    // Phase 2: End gesture with position data
-    create_synthetic_gesture(&event_source, GESTURE_PHASE_END, move_right, true)?;
+    // Phase 2: End gesture with position data (phase 4)
+    create_synthetic_gesture(&event_source, 4, move_right, true)?;
 
     Ok(())
 }
