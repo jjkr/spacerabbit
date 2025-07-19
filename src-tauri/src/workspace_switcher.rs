@@ -45,7 +45,7 @@ extern "C" {
 
 // Gesture timing and movement
 const SWIPE_MOVEMENT_DELTA: f64 = 3.0;
-const GESTURE_PHASE_DELAY_MICROS: u64 = 2000;
+const GESTURE_PHASE_DELAY_MICROS: u64 = 200;
 const POSITION_SCALE_FACTOR: f64 = 400.0;
 
 // Type unions for float/int bit pattern conversion
@@ -328,11 +328,13 @@ fn create_synthetic_gesture(
 
         // Movement data
         // Field 0x7c (124): X-axis movement delta as double
-        if gesture_phase == 1 {
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 0.5 * delta_sign);
-        } else {
+        if gesture_phase == 4 {
             CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 1.0 * delta_sign);
+        } else {
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 0.000001 * delta_sign);
         }
+        //CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 0.0);
+        //CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 1.0 * delta_sign);
         //CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, movement_delta);
         // Field 0x7d (125): Y-axis movement delta?? - 0 for horizontal swipe
         //CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7d, 0.01);
@@ -370,10 +372,10 @@ fn create_synthetic_gesture(
         if gesture_phase == 4 {
             //let cumulative_position = scaled_movement * 4.0;
             // Field 0x81 (129): Final X position for workspace snap
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x81, 1100.0 * delta_sign);
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x81, 41000.0 * delta_sign);
             
             // Field 0x82 (130): Final X position copy
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x82, 1100.0 * delta_sign);
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x82, 41000.0 * delta_sign);
         }
 
         // === TRACKING EVENT: Gesture Tracking ===
@@ -414,13 +416,13 @@ pub fn switch_to_adjacent_workspace(move_right: bool) -> Result<(), String> {
     create_synthetic_gesture(&event_source, 1, move_right, false)?;
 
     // Brief delay between phases (mimics natural gesture timing)
-    thread::sleep(Duration::from_micros(GESTURE_PHASE_DELAY_MICROS));
+    //thread::sleep(Duration::from_micros(GESTURE_PHASE_DELAY_MICROS));
 
     // Phase 2: Gesture update
     create_synthetic_gesture(&event_source, 2, move_right, true)?;
 
     // Brief delay between phases (mimics natural gesture timing)
-    thread::sleep(Duration::from_micros(GESTURE_PHASE_DELAY_MICROS));
+    //thread::sleep(Duration::from_micros(GESTURE_PHASE_DELAY_MICROS));
 
     // Phase 2: End gesture
     create_synthetic_gesture(&event_source, 4, move_right, true)?;
