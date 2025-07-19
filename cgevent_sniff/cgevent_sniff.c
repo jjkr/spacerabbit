@@ -8,7 +8,45 @@
 CFMachPortRef eventTap = NULL;
 CFRunLoopSourceRef runLoopSource = NULL;
 
-// Function to dump all fields of a CGEvent
+// Function to print event as JSON (one object per line)
+void print_event_json(CGEventRef event) {
+
+    printf("{");
+    printf("\"event_type\":%d,", (int)CGEventGetType(event));
+    printf("\"timestamp\":%llu,", CGEventGetTimestamp(event));
+    printf("\"flags\":\"0x%llx\",", (unsigned long long)CGEventGetFlags(event));
+    printf("\"sourcePID\":\"0x%llx\",", (pid_t)CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID));
+    
+    // Add integer fields
+    printf("\"integer_fields\":{");
+    bool first_int = true;
+    for (int i = 0; i < 200; i++) {
+        int64_t value = CGEventGetIntegerValueField(event, i);
+        if (value != 0) {
+            if (!first_int) printf(",");
+            printf("\"%d\":%lld", i, value);
+            first_int = false;
+        }
+    }
+    printf("},");
+    
+    // Add double fields
+    printf("\"double_fields\":{");
+    bool first_double = true;
+    for (int i = 0; i < 200; i++) {
+        double value = CGEventGetDoubleValueField(event, i);
+        if (value != 0.0) {
+            if (!first_double) printf(",");
+            printf("\"%d\":%f", i, value);
+            first_double = false;
+        }
+    }
+    printf("}");
+    printf("}\n");
+}
+
+// Function to dump all fields of a CGEvent (COMMENTED OUT)
+/*
 void dump_all_event_fields(CGEventRef event) {
     printf("=== CGEvent Field Dump ===\n");
     
@@ -37,6 +75,7 @@ void dump_all_event_fields(CGEventRef event) {
     
     printf("========================\n\n");
 }
+*/
 
 // Function to check if this looks like a space switching event
 bool is_likely_space_switch_event(CGEventRef event) {
@@ -71,33 +110,32 @@ bool is_likely_space_switch_event(CGEventRef event) {
 // Event tap callback function
 CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
     // Get the source process
-    pid_t sourcePID = CGEventGetIntegerValueField(event, kCGEventTargetUnixProcessID);
     
     // Check if this is a space switch event
-    bool is_interesting = false;
+    //bool is_interesting = false;
     
     // Check for events that match space switching patterns
-    if (is_likely_space_switch_event(event)) {
-        is_interesting = true;
-        printf("🎯 POTENTIAL SPACE SWITCH EVENT DETECTED!\n");
-        printf("Source PID: %d\n", sourcePID);
-    }
+    //if (is_likely_space_switch_event(event)) {
+    //    is_interesting = true;
+    //    printf("🎯 POTENTIAL SPACE SWITCH EVENT DETECTED!\n");
+    //    printf("Source PID: %d\n", sourcePID);
+    //}
     
     // Also log any event with non-zero values in specific fields
-    int64_t field_41 = CGEventGetIntegerValueField(event, 41);
-    int64_t field_55 = CGEventGetIntegerValueField(event, 55);
-    int64_t field_110 = CGEventGetIntegerValueField(event, 110);
+    //int64_t field_41 = CGEventGetIntegerValueField(event, 41);
+    //int64_t field_55 = CGEventGetIntegerValueField(event, 55);
+    //int64_t field_110 = CGEventGetIntegerValueField(event, 110);
     
-    if (field_41 != 0 || field_55 != 0 || field_110 != 0) {
-        is_interesting = true;
-        printf("🔍 Event with interesting fields detected!\n");
-        printf("Source PID: %d, Field 41: %lld, Field 55: %lld, Field 110: %lld\n", 
-               sourcePID, field_41, field_55, field_110);
-    }
+    //if (field_41 != 0 || field_55 != 0 || field_110 != 0) {
+    //    is_interesting = true;
+    //    printf("🔍 Event with interesting fields detected!\n");
+    //    printf("Source PID: %d, Field 41: %lld, Field 55: %lld, Field 110: %lld\n", 
+    //           sourcePID, field_41, field_55, field_110);
+    //}
     
-    // Dump full details for interesting events
+    // Print event as JSON
     //if (is_interesting) {
-        dump_all_event_fields(event);
+        print_event_json(event);
     //}
     
     // Return the event unmodified (we're just monitoring)

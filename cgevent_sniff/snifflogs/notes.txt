@@ -1,0 +1,134 @@
+
+| Field | Type | Purpose | Values |
+|-------|------|---------|---------|
+| **Field 55** | Integer | Event type identifier | 29 (gesture update), 30 (gesture data) |
+| **Field 110** | Integer | **Gesture type identifier** | **23 = Workspace switching** |
+| **Field 132** | Integer | Gesture phase | 1 (begin), 2 (progress), 4 (end) |
+| **Field 134** | Integer | Gesture phase (duplicate) | 1 (begin), 2 (progress), 4 (end) |
+| **Field 124** | Double | **X-axis movement delta** | **Negative = left swipe** |
+| **Field 125** | Double | Y-axis movement delta | Usually small values |
+| **Field 126** | Double | Z-axis/pressure delta | Small values |
+| **Field 138** | Integer | Touch count | 3 (three fingers) |
+
+| Field | Purpose | Typical Values |
+|-------|---------|----------------|
+| Field 40 | Source PID | 3449 (WindowServer or similar) |
+| Field 53 | Touch count | 3 |
+| Field 135 | Timestamp/sequence | Incrementing values |
+| Field 169 | High-precision timestamp | Large incrementing values |
+
+#### Common Fields
+    "event_type": 30,
+    "timestamp": 860552260291041,
+    "flags": "0x0",
+    "integer_fields": {
+        "55": 30, // All gesture phase events in this file
+        "110": 23, // Gesture type (23 = workspace switch)
+
+# Non mission control
+
+#### First phase
+{
+    "integer_fields": {
+    },
+    "double_fields": {
+    }
+}
+"39": 22131994, // session id/source id
+132: 1 // gesture phase (1 = start)
+"124":0.009659 // X-axis total delta
+"125": 0.009659, // Y-axis total delta
+"126": 0.00029, // Z-axis/pressure total delta
+"138": 3, // 3 finger swipe
+"53": 3, // Also 3 finger swipe?
+"40": 96437, // source pid
+"45": 1, // Always 1. Flags???
+"50": 248, // Always 248
+"58": 860552260291041, // timestamp
+"85": 1085479, // source id? 
+"87": 4298839515, // Same always. extended source id??
+"101": 28, // display id
+"107": 1329, // Same for all. Additional display info?
+"123": 1, // Always 1. Active flag?
+"135": 1008615424, // sequence
+"165": 1, // Always 1 also
+"169": 20653254159583 // High precision timestamp
+"119": 0.0, // Always zero...
+        "120": 0.0,
+        "139": 0.0,
+        "140": 0.0,
+
+#### Middle (a bunch of them)
+{
+    "integer_fields": {
+        "115": 8,
+        "117": 8,
+        "164": 8,
+    },
+    "double_fields": {
+        "113": 0.0,
+        "114": 0.0,
+        "115": 8.0,
+        "116": 0.0,
+        "117": 8.0,
+        "118": 0.0,
+        "164": 8.0,
+    }
+}
+132: 2 // gesture phase (2 = update)
+"124":0.049698 // x axis total delta
+
+#### Last phase
+{
+    "integer_fields": {
+    },
+    "double_fields": {
+    }
+}
+132: 4 // gesture phase (4 = done)
+"124":0.393677 // x axis total delta
+"129": 3.776276, // Position update? X delta times 100? Last phase only
+"130": 3.776276,
+
+## Mission Control
+#### First phase
+{
+    "integer_fields": {
+    },
+    "double_fields": {
+    }
+}
+132: 1 // gesture phase (1 = start)
+"124":0.009979 // x axis total delta
+
+#### Middle (a bunch of them)
+{
+    "integer_fields": {
+        "115": 8,
+        "117": 8,
+        "164": 8,
+    },
+    "double_fields": {
+        "113": 0.0,
+        "114": 0.0,
+        "115": 8.0,
+        "116": 0.0,
+        "117": 8.0,
+        "118": 0.0,
+        "164": 8.0,
+    }
+}
+132: 2 // gesture phase (2 = update)
+"124":0.049698 // x axis total delta
+
+#### Last phase
+{
+    "integer_fields": {
+    },
+    "double_fields": {
+    }
+}
+132: 4 // gesture phase (4 = done)
+"124":0.393677 // x axis total delta
+"129": 3.776276,
+"130": 3.776276,
