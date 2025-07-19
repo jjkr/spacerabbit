@@ -18,6 +18,7 @@ use tauri::{
 struct AppState {
     current_desktop: Arc<Mutex<u32>>,
     last_cursor_display: Arc<Mutex<u32>>,
+    mission_control_active: Arc<Mutex<bool>>,
 }
 
 fn main() {
@@ -27,6 +28,7 @@ fn main() {
     let app_state = AppState {
         current_desktop: Arc::new(Mutex::new(1)),
         last_cursor_display: Arc::new(Mutex::new(0)),
+        mission_control_active: Arc::new(Mutex::new(false)),
     };
 
     // Get initial desktop number
@@ -40,14 +42,16 @@ fn main() {
     // Initialize global hotkey manager
     let manager = GlobalHotKeyManager::new().expect("Failed to create hotkey manager");
 
-    // Create hotkeys: Alt+H (left) and Alt+L (right)
+    // Create hotkeys: Alt+H (left), Alt+L (right), and Alt+E (mission control)
     let hotkey_left = HotKey::new(Some(Modifiers::ALT), Code::KeyH);   // Alt+H = left
     let hotkey_right = HotKey::new(Some(Modifiers::ALT), Code::KeyL);  // Alt+L = right
+    let hotkey_mission_control = HotKey::new(Some(Modifiers::ALT), Code::KeyE); // Alt+E = mission control
 
-    // Register both hotkeys
+    // Register all hotkeys
     manager.register(hotkey_left).expect("Failed to register Alt+H hotkey");
     manager.register(hotkey_right).expect("Failed to register Alt+L hotkey");
-    println!("Registered Alt+H (left) and Alt+L (right) global hotkeys");
+    manager.register(hotkey_mission_control).expect("Failed to register Alt+E hotkey");
+    println!("Registered Alt+H (left), Alt+L (right), and Alt+E (mission control) global hotkeys");
 
     let mut app = tauri::Builder::default()
         .manage(app_state.clone())
@@ -104,7 +108,7 @@ fn main() {
             let app_handle_hotkey = app_handle.clone();
             let state_hotkey = state.clone();
             thread::spawn(move || {
-                hotkey_listener_thread(app_handle_hotkey, state_hotkey, manager, hotkey_left, hotkey_right);
+                hotkey_listener_thread(app_handle_hotkey, state_hotkey, manager, hotkey_left, hotkey_right, hotkey_mission_control);
             });
 
             // Spawn cursor monitoring thread
@@ -117,6 +121,7 @@ fn main() {
             println!("QuickSpace is now running in the background.");
             println!("   Alt+H: Switch to left workspace");
             println!("   Alt+L: Switch to right workspace");
+            println!("   Alt+E: Toggle Mission Control");
             println!("   Tray shows current desktop number for cursor's display");
             Ok(())
         })
@@ -144,6 +149,7 @@ fn hotkey_listener_thread(
     _manager: GlobalHotKeyManager,
     hotkey_left: HotKey,
     hotkey_right: HotKey,
+    hotkey_mission_control: HotKey,
 ) {
     loop {
         if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
@@ -168,6 +174,39 @@ fn hotkey_listener_thread(
                             // Update tray text after workspace change (small delay for system to catch up)
                             thread::sleep(Duration::from_millis(100));
                             update_tray_text_for_current_context(&app_handle, &state);
+                        }
+                    },
+                    id if id == hotkey_mission_control.id() => {
+                        // Toggle Mission Control state
+                        let is_active = {
+                            let mut mc_active = state.mission_control_active.lock().unwrap();
+                            let current_state = *mc_active;
+                            *mc_active = !current_state;
+                            current_state
+                        };
+
+                        if is_active {
+                            // Mission Control is currently active, so deactivate it
+                            if let Err(e) = workspace_switcher::deactivate_mission_control() {
+                                eprintln!("Failed to deactivate mission control: {}", e);
+                                // Revert state on error
+                                if let Ok(mut mc_active) = state.mission_control_active.lock() {
+                                    *mc_active = true;
+                                }
+                            } else {
+                                println!("Mission Control deactivated");
+                            }
+                        } else {
+                            // Mission Control is currently inactive, so activate it
+                            if let Err(e) = workspace_switcher::activate_mission_control() {
+                                eprintln!("Failed to activate mission control: {}", e);
+                                // Revert state on error
+                                if let Ok(mut mc_active) = state.mission_control_active.lock() {
+                                    *mc_active = false;
+                                }
+                            } else {
+                                println!("Mission Control activated");
+                            }
                         }
                     },
                     _ => {

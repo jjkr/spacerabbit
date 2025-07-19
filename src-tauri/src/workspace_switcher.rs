@@ -283,17 +283,28 @@ pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
 /// Generates CGEvents that mimic a 3-finger horizontal swipe gesture.
 /// This bypasses the need for actual touch input by directly posting the 
 /// essential gesture event fields that macOS recognizes for workspace switching.
+/// 
+/// # Arguments:
+/// * `event_source` - The CGEventSource to use for creating the event.
+/// * `gesture_phase` - The phase of the gesture (1 for begin, 2 for update, 4 for end/snap).
+/// * `gesture_type` - The type of the gesture (e.g., 0x17 for horizontal swipe).
+/// * `positive_direction` - Whether the swipe is in the positive direction (right/up) or negative (left/down).
+/// # Returns:
+/// * `Ok(())` on success, or an error message if the event could not be created or posted.
+////// # Notes:
+/// This function uses private CGEvent fields to simulate the gesture.
 fn send_gesture_event(
     event_source: &CGEventSource,
     gesture_phase: i64,
-    swipe_direction_right: bool
+    gesture_type: i64,
+    positive_direction: bool
 ) -> Result<(), String> {
     // Create gesture phase event and tracking event
     let phase_event = CGEvent::new(event_source.clone())
         .map_err(|_| "Failed to create phase event")?;
 
     // Calculate movement values
-    let delta_sign = if swipe_direction_right { 1.0 } else { -1.0 };
+    let delta_sign = if positive_direction { 1.0 } else { -1.0 };
 
     unsafe {
         // === PHASE EVENT: Gesture Phase Transition ===
@@ -311,9 +322,9 @@ fn send_gesture_event(
 
         // Gesture state flags
         // Field 0x7b (123): Gesture active flag - 1 indicates gesture is active
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x7b, 1);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x7b, gesture_type);
         // Field 0xa5 (165): Gesture state flag - 1 indicates gesture state is active
-        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0xa5, 1);
+        CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0xa5, gesture_type);
 
         // Position data (only during snap phase)
         if gesture_phase == 4 {
@@ -335,6 +346,30 @@ fn send_gesture_event(
     Ok(())
 }
 
+pub fn activate_mission_control() -> Result<(), String> {
+    let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+        .map_err(|_| "Failed to create CGEventSource")?;
+
+    // Simulate a 3-finger swipe up gesture to activate Mission Control
+    send_gesture_event(&event_source, 1, 2, true)?;
+    send_gesture_event(&event_source, 2, 2, true)?;
+    send_gesture_event(&event_source, 4, 2, true)?;
+
+    Ok(())
+}
+
+pub fn deactivate_mission_control() -> Result<(), String> {
+    let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+        .map_err(|_| "Failed to create CGEventSource")?;
+
+    // Simulate a 3-finger swipe down gesture to deactivate Mission Control
+    send_gesture_event(&event_source, 1, 2, false)?;
+    send_gesture_event(&event_source, 2, 2, false)?;
+    send_gesture_event(&event_source, 4, 2, false)?;
+
+    Ok(())
+}
+
 // =============================================================================
 // PUBLIC WORKSPACE SWITCHING API
 // =============================================================================
@@ -349,9 +384,9 @@ pub fn switch_to_adjacent_workspace(move_right: bool) -> Result<(), String> {
     let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
         .map_err(|_| "Failed to create CGEventSource")?;
 
-    send_gesture_event(&event_source, 1, move_right)?;
-    send_gesture_event(&event_source, 2, move_right)?;
-    send_gesture_event(&event_source, 4, move_right)?;
+    send_gesture_event(&event_source, 1, 1, move_right)?;
+    send_gesture_event(&event_source, 2,  1,move_right)?;
+    send_gesture_event(&event_source, 4,  1,move_right)?;
 
     Ok(())
 }
