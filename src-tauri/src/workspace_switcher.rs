@@ -1,14 +1,13 @@
 use core_graphics::event::{CGEvent, CGEventTapLocation};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use core_graphics::geometry::{CGPoint, CGRect};
+use core_graphics::display::{CGDirectDisplayID, CGDisplayPixelsWide, CGDisplayPixelsHigh};
 use core_foundation::array::{CFArrayRef, CFArrayGetCount, CFArrayGetValueAtIndex};
 use core_foundation::base::{CFTypeRef, CFRelease};
 use core_foundation::number::{CFNumberRef, CFNumberGetValue, kCFNumberSInt64Type};
 use core_foundation::dictionary::CFDictionaryRef;
 use core_foundation::string::{CFStringRef, kCFStringEncodingUTF8};
 use foreign_types_shared::ForeignType;
-use cocoa::appkit::NSEvent;
-use cocoa::base::nil;
 use std::thread;
 use std::time::Duration;
 
@@ -37,6 +36,20 @@ extern "C" {
     fn CGMainDisplayID() -> u32;
     fn CGSGetActiveSpace(cid: CGSConnectionID, display_id: u32) -> u64;
     fn CGDisplayBounds(display: u32) -> CGRect;
+    
+    // Mouse event functions
+    fn CGEventCreateMouseEvent(
+        source: *const std::ffi::c_void,
+        mouseType: u32,
+        mouseCursorPosition: CGPoint,
+        mouseButton: u32
+    ) -> CGEventRef;
+    fn CGEventPost(tap: u32, event: CGEventRef);
+    fn CGWarpMouseCursorPosition(newCursorPosition: CGPoint) -> i32;
+    
+    // Cursor position functions
+    fn CGEventCreate(source: *const std::ffi::c_void) -> CGEventRef;
+    fn CGEventGetLocation(event: CGEventRef) -> CGPoint;
 }
 
 // =============================================================================
@@ -47,6 +60,21 @@ extern "C" {
 const SWIPE_MOVEMENT_DELTA: f64 = 3.0;
 const GESTURE_PHASE_DELAY_MICROS: u64 = 200;
 const POSITION_SCALE_FACTOR: f64 = 400.0;
+
+// Mouse movement constants
+const MISSION_CONTROL_ACTIVATION_DELAY_MS: u64 = 250;
+const DESKTOP_THUMBNAILS_TRIGGER_DELAY_MS: u64 = 100;
+const TOP_EDGE_OFFSET: f64 = 20.0; // Pixels from top edge to trigger desktop thumbnails
+
+// Core Graphics mouse event types
+const KCG_EVENT_MOUSE_MOVED: u32 = 5;
+const KCG_EVENT_TAP_DISABLED_BY_TIMEOUT: u32 = 0xFFFFFFFE;
+const KCG_EVENT_TAP_DISABLED_BY_USER_INPUT: u32 = 0xFFFFFFFF;
+
+// Core Graphics event constants
+const kCGEventMouseMoved: u32 = 5;
+const kCGMouseButtonLeft: u32 = 0;
+const kCGHIDEventTap: u32 = 0;
 
 // Type unions for float/int bit pattern conversion
 #[repr(C)]
@@ -75,9 +103,14 @@ pub struct DisplayInfo {
 /// Get current mouse cursor position in global coordinates
 pub fn get_cursor_position() -> Result<CGPoint, String> {
     unsafe {
-        let mouse_location = NSEvent::mouseLocation(nil);
-        let cursor_point = CGPoint::new(mouse_location.x as f64, mouse_location.y as f64);
-        Ok(cursor_point)
+        // Create a “dummy” event (no specific type)
+        let e = CGEventCreate(std::ptr::null());
+        // Ask it where the cursor is right now
+        let loc = CGEventGetLocation(e);
+        CFRelease(e);
+        //let mouse_location = NSEvent::mouseLocation(nil);
+        //let cursor_point = CGPoint::new(mouse_location.x as f64, mouse_location.y as f64);
+        Ok(loc)
     }
 }
 
@@ -277,6 +310,110 @@ pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
     Ok((current_desktop, total_desktops))
 }
 
+// =============================================================================
+// MOUSE MOVEMENT FUNCTIONS
+// =============================================================================
+
+/// Move mouse cursor to specified coordinates using CGWarpMouseCursorPosition
+/// 
+/// This function provides instant mouse teleportation to the target position.
+/// Uses the most direct Core Graphics API for cursor positioning.
+/// 
+/// # Arguments
+/// * `x` - Target X coordinate in global screen coordinates
+/// * `y` - Target Y coordinate in global screen coordinates
+/// 
+/// # Returns
+/// * `Ok(())` on success, or an error message if the operation failed
+pub fn move_mouse_to_position(x: f64, y: f64) -> Result<(), String> {
+    let target_point = CGPoint::new(x, y);
+    
+    unsafe {
+        let result = CGWarpMouseCursorPosition(target_point);
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(format!("Failed to move mouse cursor: CGWarpMouseCursorPosition returned {}", result))
+        }
+    }
+}
+
+/// Move mouse to the top edge of the current display to trigger desktop thumbnails
+/// 
+/// This function determines the current display bounds and moves the mouse to a position
+/// near the top edge that will trigger macOS to show desktop thumbnails in Mission Control.
+/// 
+/// # Returns
+/// * `Ok(original_position)` with the mouse's original position, or an error message
+pub fn activate_mission_control_thumbnails() -> Result<(), String> {
+    
+    unsafe {
+        // Compute a point along the very top of the main screen
+        let main_disp: CGDirectDisplayID = CGMainDisplayID();
+        let width  = CGDisplayPixelsWide(main_disp);
+        let height = CGDisplayPixelsHigh(main_disp);
+        
+        println!("Moving mouse to top edge: width={}, height={}", width, height);
+
+        // Shake the mouse
+        for i in 0..3 {
+            //let shake_point = CGPoint::new();
+            //let shake_evt: CGEventRef = CGEventCreateMouseEvent(
+            //    std::ptr::null(), // No event source, use system default
+            //    kCGEventMouseMoved,
+            //    shake_point,
+            //    kCGMouseButtonLeft
+            //);
+            //CGEventPost(kCGHIDEventTap, shake_evt);
+            //CFRelease(shake_evt);
+            thread::sleep(Duration::from_millis(20));
+
+            move_mouse_to_position(width as f64, TOP_EDGE_OFFSET + (i % 2) as f64 * 10.0)?;
+        }
+        
+
+
+        // Top‐center, just below the menu bar (y=height−1 is screen top)
+        //let hover_point: CGPoint = CGPoint::new((width / 8) as f64, 20 as f64);
+
+        //// Create and post a "mouse moved" event
+        //let move_evt: CGEventRef = CGEventCreateMouseEvent(
+        //    std::ptr::null(), // No event source, use system default
+        //    kCGEventMouseMoved,
+        //    hover_point,
+        //    kCGMouseButtonLeft
+        //);
+        //CGEventPost(kCGHIDEventTap, move_evt);
+        //CFRelease(move_evt);
+
+
+        //// Middle point of screen
+        //let middle_point: CGPoint = CGPoint::new((width / 2) as f64, (height / 2) as f64);
+
+        //// Create and post a "mouse moved" event
+        //let center_mouse_evt: CGEventRef = CGEventCreateMouseEvent(
+        //    std::ptr::null(), // No event source, use system default
+        //    kCGEventMouseMoved,
+        //    middle_point,
+        //    kCGMouseButtonLeft
+        //);
+        //CGEventPost(kCGHIDEventTap, center_mouse_evt);
+        //CFRelease(center_mouse_evt);
+    }
+    
+    Ok(())
+}
+
+/// Restore mouse cursor to its original position
+/// 
+/// # Arguments
+/// * `original_position` - The position to restore the cursor to
+/// 
+/// # Returns
+/// * `Ok(())` on success, or an error message if the operation failed
+pub fn restore_mouse_position(original_position: CGPoint) -> Result<(), String> {
+    move_mouse_to_position(original_position.x, original_position.y)
+}
 
 /// Create and send a synthetic gesture event for workspace switching
 /// 
@@ -323,19 +460,19 @@ fn send_gesture_event(
         // Gesture state flags
         // Field 0x7b (123): Gesture active flag - 1 indicates gesture is active
         CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x7b, gesture_type);
-        // Field 0xa5 (165): Gesture state flag - 1 indicates gesture state is active
+        // Field 0xa5 (165): Gesture type - 1 for horizontal swipe, 2 for vertical swipe
         CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0xa5, gesture_type);
 
         // Position data (only during snap phase)
         if gesture_phase == 4 {
-            // Field 0x7c (124): X-axis movement delta as double
+            // Field 0x7c (124): Movement delta as double
             CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 1.0 * delta_sign);
-            // Field 0x81 (129): Final X position for workspace snap
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x81, 41000.0 * delta_sign);
-            // Field 0x82 (130): Final X position copy
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x82, 41000.0 * delta_sign);
+            // Field 0x81 (129): Final position, set to a large number for fast transition
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x81, 9100.0 * delta_sign);
+            // Field 0x82 (130): Final position copy
+            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x82, 9100.0 * delta_sign);
         } else {
-            // Field 0x7c (124): X-axis movement delta as double
+            // Field 0x7c (124): Movement delta as double
             CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 0.000001 * delta_sign);
         }
     }
@@ -347,6 +484,41 @@ fn send_gesture_event(
 }
 
 pub fn activate_mission_control() -> Result<(), String> {
+    let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+        .map_err(|_| "Failed to create CGEventSource")?;
+
+    // Get current cursor position to restore later
+    let original_position = get_cursor_position()?;
+    
+    // Move mouse to a position near the top edge to trigger desktop thumbnails
+    move_mouse_to_position(5 as f64, TOP_EDGE_OFFSET)?;
+
+    // Simulate a 3-finger swipe up gesture to activate Mission Control
+    send_gesture_event(&event_source, 1, 2, true)?;
+    send_gesture_event(&event_source, 2, 2, true)?;
+    send_gesture_event(&event_source, 4, 2, true)?;
+
+    // Wait for desktop thumbnails to appear
+    thread::sleep(Duration::from_millis(1));
+    // Restore original mouse position
+    restore_mouse_position(original_position)?;
+
+    Ok(())
+}
+
+/// Activate Mission Control with desktop thumbnails (same as activate_mission_control)
+/// 
+/// This is an alias for the enhanced activate_mission_control function that includes
+/// automatic mouse movement to trigger desktop thumbnails.
+pub fn activate_mission_control_with_thumbnails() -> Result<(), String> {
+    activate_mission_control()
+}
+
+/// Activate Mission Control without desktop thumbnails (original behavior)
+/// 
+/// This function provides the original Mission Control activation behavior
+/// without the mouse movement to trigger desktop thumbnails.
+pub fn activate_mission_control_basic() -> Result<(), String> {
     let event_source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
         .map_err(|_| "Failed to create CGEventSource")?;
 
