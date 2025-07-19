@@ -26,6 +26,7 @@ foreign-types-shared = "0.3"
 libc = "0.2"
 # Added for Cocoa mouse position
 cocoa = "0.25"
+lazy_static = "1.4"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem

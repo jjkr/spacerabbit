@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod workspace_switcher;
+mod window_manager;
 
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::{HotKey, Modifiers, Code}};
 use std::sync::{Arc, Mutex};
@@ -32,7 +33,7 @@ fn main() {
     };
 
     // Get initial desktop number
-    let initial_desktop = workspace_switcher::get_current_context_desktop().unwrap_or(1);
+    let initial_desktop = workspace_switcher::get_current_desktop().unwrap_or(1);
 
     // Update shared state
     if let Ok(mut desktop) = app_state.current_desktop.lock() {
@@ -42,16 +43,18 @@ fn main() {
     // Initialize global hotkey manager
     let manager = GlobalHotKeyManager::new().expect("Failed to create hotkey manager");
 
-    // Create hotkeys: Alt+H (left), Alt+L (right), and Alt+E (mission control)
+    // Create hotkeys: Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling)
     let hotkey_left = HotKey::new(Some(Modifiers::ALT), Code::KeyH);   // Alt+H = left
     let hotkey_right = HotKey::new(Some(Modifiers::ALT), Code::KeyL);  // Alt+L = right
     let hotkey_mission_control = HotKey::new(Some(Modifiers::ALT), Code::KeyE); // Alt+E = mission control
+    let hotkey_window_cycle = HotKey::new(Some(Modifiers::ALT), Code::Tab); // Alt+Tab = window cycling
 
     // Register all hotkeys
     manager.register(hotkey_left).expect("Failed to register Alt+H hotkey");
     manager.register(hotkey_right).expect("Failed to register Alt+L hotkey");
     manager.register(hotkey_mission_control).expect("Failed to register Alt+E hotkey");
-    println!("Registered Alt+H (left), Alt+L (right), and Alt+E (mission control) global hotkeys");
+    manager.register(hotkey_window_cycle).expect("Failed to register Alt+Tab hotkey");
+    println!("Registered Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling) global hotkeys");
 
     let mut app = tauri::Builder::default()
         .manage(app_state.clone())
@@ -108,7 +111,7 @@ fn main() {
             let app_handle_hotkey = app_handle.clone();
             let state_hotkey = state.clone();
             thread::spawn(move || {
-                hotkey_listener_thread(app_handle_hotkey, state_hotkey, manager, hotkey_left, hotkey_right, hotkey_mission_control);
+                hotkey_listener_thread(app_handle_hotkey, state_hotkey, manager, hotkey_left, hotkey_right, hotkey_mission_control, hotkey_window_cycle);
             });
 
             // Spawn cursor monitoring thread
@@ -122,6 +125,7 @@ fn main() {
             println!("   Alt+H: Switch to left workspace");
             println!("   Alt+L: Switch to right workspace");
             println!("   Alt+E: Toggle Mission Control");
+            println!("   Alt+Tab: Cycle through windows on current workspace");
             println!("   Tray shows current desktop number for cursor's display");
             Ok(())
         })
@@ -150,6 +154,7 @@ fn hotkey_listener_thread(
     hotkey_left: HotKey,
     hotkey_right: HotKey,
     hotkey_mission_control: HotKey,
+    hotkey_window_cycle: HotKey,
 ) {
     loop {
         if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
@@ -207,6 +212,14 @@ fn hotkey_listener_thread(
                             } else {
                                 println!("Mission Control activated");
                             }
+                        }
+                    },
+                    id if id == hotkey_window_cycle.id() => {
+                        // Cycle to next window on current workspace
+                        if let Err(e) = window_manager::cycle_next_window() {
+                            eprintln!("Failed to cycle to next window: {}", e);
+                        } else {
+                            println!("Cycled to next window");
                         }
                     },
                     _ => {
@@ -286,7 +299,7 @@ fn update_tray_text(app_handle: &AppHandle, desktop_num: u32) {
 
 /// Update tray text based on current cursor context
 fn update_tray_text_for_current_context(app_handle: &AppHandle, state: &AppState) {
-    match workspace_switcher::get_current_context_desktop() {
+    match workspace_switcher::get_current_desktop() {
         Ok(desktop_num) => {
             // Update state
             if let Ok(mut current) = state.current_desktop.lock() {

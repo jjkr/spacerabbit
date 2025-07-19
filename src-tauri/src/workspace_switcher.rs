@@ -489,9 +489,13 @@ pub fn activate_mission_control() -> Result<(), String> {
 
     // Get current cursor position to restore later
     let original_position = get_cursor_position()?;
-    
+
+    // Sleep 1 ms to allow system to register the position change
+    thread::sleep(Duration::from_millis(1));
     // Move mouse to a position near the top edge to trigger desktop thumbnails
     move_mouse_to_position(5 as f64, TOP_EDGE_OFFSET)?;
+    // Sleep 1 ms to allow system to register the position change
+    thread::sleep(Duration::from_millis(1));
 
     // Simulate a 3-finger swipe up gesture to activate Mission Control
     send_gesture_event(&event_source, 1, 2, true)?;
@@ -557,8 +561,8 @@ pub fn switch_to_adjacent_workspace(move_right: bool) -> Result<(), String> {
         .map_err(|_| "Failed to create CGEventSource")?;
 
     send_gesture_event(&event_source, 1, 1, move_right)?;
-    send_gesture_event(&event_source, 2,  1,move_right)?;
-    send_gesture_event(&event_source, 4,  1,move_right)?;
+    send_gesture_event(&event_source, 2,  1, move_right)?;
+    send_gesture_event(&event_source, 4,  1, move_right)?;
 
     Ok(())
 }
@@ -592,10 +596,6 @@ pub fn switch_left() -> Result<(), String> {
 
 pub fn switch_right() -> Result<(), String> {
     switch_workspace_right()
-}
-
-pub fn switch_to_adjacent_space(to_right: bool) -> Result<(), String> {
-    switch_to_adjacent_workspace(to_right)
 }
 
 pub fn get_current_context_desktop() -> Result<u32, String> {
