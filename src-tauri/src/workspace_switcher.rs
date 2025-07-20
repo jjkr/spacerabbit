@@ -64,7 +64,7 @@ const POSITION_SCALE_FACTOR: f64 = 400.0;
 // Mouse movement constants
 const MISSION_CONTROL_ACTIVATION_DELAY_MS: u64 = 250;
 const DESKTOP_THUMBNAILS_TRIGGER_DELAY_MS: u64 = 100;
-const TOP_EDGE_OFFSET: f64 = 20.0; // Pixels from top edge to trigger desktop thumbnails
+const TOP_EDGE_OFFSET: f64 = 10.0; // Pixels from top edge to trigger desktop thumbnails
 
 // Core Graphics mouse event types
 const KCG_EVENT_MOUSE_MOVED: u32 = 5;
@@ -145,7 +145,7 @@ pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
 
         let count = CFArrayGetCount(managed_spaces);
 
-        // Find the entry for our display (usually there's just one for the main display)
+        // Find the entry for our specific display
         for i in 0..count {
             let entry_ref = CFArrayGetValueAtIndex(managed_spaces, i);
             if entry_ref.is_null() {
@@ -154,6 +154,28 @@ pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
 
             // Use raw CFDictionary access
             let entry_dict = entry_ref as CFDictionaryRef;
+
+            // // First, check if this entry is for our target display
+            // let display_key_cstr = std::ffi::CString::new("Display").unwrap();
+            // let display_key_cfstr = CFStringCreateWithCString(
+            //     std::ptr::null(),
+            //     display_key_cstr.as_ptr(),
+            //     kCFStringEncodingUTF8
+            // );
+
+            // let display_value_ref = CFDictionaryGetValue(entry_dict, display_key_cfstr as *const std::ffi::c_void);
+            // CFRelease(display_key_cfstr as CFTypeRef);
+
+            // if !display_value_ref.is_null() {
+            //     let mut entry_display_id: i64 = 0;
+            //     let success = CFNumberGetValue(
+            //         display_value_ref as CFNumberRef,
+            //         kCFNumberSInt64Type,
+            //         &mut entry_display_id as *mut i64 as *mut std::ffi::c_void
+            //     );
+
+            //     // Only process this entry if it matches our target display
+            //     if success && entry_display_id as u32 == display_id {
 
             // Create "Spaces" key string
             let spaces_key_cstr = std::ffi::CString::new("Spaces").unwrap();
@@ -212,6 +234,9 @@ pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
                     }
                 }
             }
+
+            //     }
+            // }
         }
 
         CFRelease(managed_spaces as CFTypeRef);
@@ -256,7 +281,7 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
 
         let display_count = CFArrayGetCount(managed_spaces);
 
-        // Search through display entries to find our display
+        // Search through display entries to find our specific display
         for i in 0..display_count {
             let entry_ref = CFArrayGetValueAtIndex(managed_spaces, i);
             if entry_ref.is_null() {
@@ -264,6 +289,28 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
             }
 
             let entry_dict = entry_ref as CFDictionaryRef;
+
+            // // First, check if this entry is for our target display
+            // let display_key_cstr = std::ffi::CString::new("Display").unwrap();
+            // let display_key_cfstr = CFStringCreateWithCString(
+            //     std::ptr::null(),
+            //     display_key_cstr.as_ptr(),
+            //     kCFStringEncodingUTF8
+            // );
+
+            // let display_value_ref = CFDictionaryGetValue(entry_dict, display_key_cfstr as *const std::ffi::c_void);
+            // CFRelease(display_key_cfstr as CFTypeRef);
+
+            // if !display_value_ref.is_null() {
+            //     let mut entry_display_id: i64 = 0;
+            //     let success = CFNumberGetValue(
+            //         display_value_ref as CFNumberRef,
+            //         kCFNumberSInt64Type,
+            //         &mut entry_display_id as *mut i64 as *mut std::ffi::c_void
+            //     );
+
+            //     // Only process this entry if it matches our target display
+            //     if success && entry_display_id as u32 == display_id {
 
             // Create "Spaces" key for dictionary lookup
             let spaces_key_cstr = std::ffi::CString::new("Spaces").unwrap();
@@ -287,6 +334,8 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
                     }
                 }
             }
+                //}
+            //}
         }
 
         CFRelease(managed_spaces as CFTypeRef);
@@ -304,9 +353,13 @@ pub fn count_total_desktops() -> Result<u32, String> {
 /// Get current and total desktop counts for cursor's display
 pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
     let cursor_pos = get_cursor_position()?;
+    println!("Cursor position: {:?}", cursor_pos);
     let display_id = find_display_at_point(cursor_pos)?;
+    println!("Display ID for cursor: {}", display_id);
     let current_desktop = get_desktop_for_display(display_id)?;
+    println!("Current desktop for display {}: {}", display_id, current_desktop);
     let total_desktops = count_desktops_for_display(display_id)?;
+    println!("Total desktops for display {}: {}", display_id, total_desktops);
     Ok((current_desktop, total_desktops))
 }
 
@@ -491,8 +544,23 @@ pub fn activate_mission_control() -> Result<(), String> {
     let original_position = get_cursor_position()?;
 
     // Move mouse to a position near the top edge to trigger desktop thumbnails
-    move_mouse_to_position(5 as f64, TOP_EDGE_OFFSET)?;
+    move_mouse_to_position(50 as f64, TOP_EDGE_OFFSET)?;
     // Sleep to allow system to register the position change
+    thread::sleep(Duration::from_millis(5));
+
+    unsafe {
+        let top_point = CGPoint::new(60.0, TOP_EDGE_OFFSET);
+        // Create and post a "mouse moved" event (trying to fix desktop thumbnails not appearing)
+        let move_evt: CGEventRef = CGEventCreateMouseEvent(
+            std::ptr::null(), // No event source, use system default
+            kCGEventMouseMoved,
+            top_point,
+            kCGMouseButtonLeft
+        );
+        CGEventPost(kCGHIDEventTap, move_evt);
+        CFRelease(move_evt);
+    }
+
     thread::sleep(Duration::from_millis(5));
 
     // Simulate a 3-finger swipe up gesture to activate Mission Control
