@@ -1,3 +1,5 @@
+
+use crate::cf_utils::{create_cfstring, cfstring_to_string, get_dict_string, get_dict_number, get_dict_bounds, print_full_dictionary};
 use core_graphics::event::{CGEvent, CGEventTapLocation};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use core_graphics::geometry::{CGPoint, CGRect};
@@ -290,21 +292,22 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
             }
 
             let entry_dict = entry_ref as CFDictionaryRef;
+            print_full_dictionary(entry_dict);
 
             // First, check if this entry is for our target display
-            let display_key_cstr = std::ffi::CString::new("Display").unwrap();
-            let display_key_cfstr = CFStringCreateWithCString(
-                std::ptr::null(),
-                display_key_cstr.as_ptr(),
-                kCFStringEncodingUTF8
-            );
+            // let display_key_cstr = std::ffi::CString::new("Display").unwrap();
+            // let display_key_cfstr = CFStringCreateWithCString(
+            //     std::ptr::null(),
+            //     display_key_cstr.as_ptr(),
+            //     kCFStringEncodingUTF8
+            // );
 
-            let display_value_ref = CFDictionaryGetValue(entry_dict, display_key_cfstr as *const std::ffi::c_void);
-            CFRelease(display_key_cfstr as CFTypeRef);
-            if display_value_ref.is_null() {
-                println!("Skipping entry at index {}: no display value", i);
-                continue;
-            }
+            // let display_value_ref = CFDictionaryGetValue(entry_dict, display_key_cfstr as *const std::ffi::c_void);
+            // CFRelease(display_key_cfstr as CFTypeRef);
+            // if display_value_ref.is_null() {
+            //     println!("Skipping entry at index {}: no display value", i);
+            //     continue;
+            // }
 
             // if !display_value_ref.is_null() {
             //     let mut entry_display_id: i64 = 0;

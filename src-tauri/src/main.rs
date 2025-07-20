@@ -1,6 +1,5 @@
-mod cf_utils;
-mod workspace_switcher;
-mod window_manager;
+use quickspace::workspace_switcher;
+use quickspace::window_manager;
 
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::{HotKey, Modifiers, Code}};
 use std::sync::{Arc, Mutex};

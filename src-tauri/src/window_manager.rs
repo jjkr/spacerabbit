@@ -31,8 +31,8 @@ extern "C" {
 
 // Core Graphics constants
 const kCGWindowListOptionOnScreenOnly: u32 = 1 << 0;
-const kCGWindowListExcludeDesktopElements: u32 = 1 << 4;
 const kCGWindowListOptionAll: u32 = 1 << 2;
+const kCGWindowListExcludeDesktopElements: u32 = 1 << 4;
 
 // Window ordering constants
 const kCGSOrderAbove: i32 = 1;
