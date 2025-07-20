@@ -490,12 +490,10 @@ pub fn activate_mission_control() -> Result<(), String> {
     // Get current cursor position to restore later
     let original_position = get_cursor_position()?;
 
-    // Sleep 1 ms to allow system to register the position change
-    thread::sleep(Duration::from_millis(1));
     // Move mouse to a position near the top edge to trigger desktop thumbnails
     move_mouse_to_position(5 as f64, TOP_EDGE_OFFSET)?;
-    // Sleep 1 ms to allow system to register the position change
-    thread::sleep(Duration::from_millis(1));
+    // Sleep to allow system to register the position change
+    thread::sleep(Duration::from_millis(5));
 
     // Simulate a 3-finger swipe up gesture to activate Mission Control
     send_gesture_event(&event_source, 1, 2, true)?;
@@ -503,7 +501,7 @@ pub fn activate_mission_control() -> Result<(), String> {
     send_gesture_event(&event_source, 4, 2, true)?;
 
     // Wait for desktop thumbnails to appear
-    thread::sleep(Duration::from_millis(1));
+    thread::sleep(Duration::from_millis(5));
     // Restore original mouse position
     restore_mouse_position(original_position)?;
 
@@ -596,8 +594,4 @@ pub fn switch_left() -> Result<(), String> {
 
 pub fn switch_right() -> Result<(), String> {
     switch_workspace_right()
-}
-
-pub fn get_current_context_desktop() -> Result<u32, String> {
-    get_current_desktop()
 }
