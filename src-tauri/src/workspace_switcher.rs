@@ -285,21 +285,26 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
         for i in 0..display_count {
             let entry_ref = CFArrayGetValueAtIndex(managed_spaces, i);
             if entry_ref.is_null() {
+                println!("Skipping null entry at index {}", i);
                 continue;
             }
 
             let entry_dict = entry_ref as CFDictionaryRef;
 
-            // // First, check if this entry is for our target display
-            // let display_key_cstr = std::ffi::CString::new("Display").unwrap();
-            // let display_key_cfstr = CFStringCreateWithCString(
-            //     std::ptr::null(),
-            //     display_key_cstr.as_ptr(),
-            //     kCFStringEncodingUTF8
-            // );
+            // First, check if this entry is for our target display
+            let display_key_cstr = std::ffi::CString::new("Display").unwrap();
+            let display_key_cfstr = CFStringCreateWithCString(
+                std::ptr::null(),
+                display_key_cstr.as_ptr(),
+                kCFStringEncodingUTF8
+            );
 
-            // let display_value_ref = CFDictionaryGetValue(entry_dict, display_key_cfstr as *const std::ffi::c_void);
-            // CFRelease(display_key_cfstr as CFTypeRef);
+            let display_value_ref = CFDictionaryGetValue(entry_dict, display_key_cfstr as *const std::ffi::c_void);
+            CFRelease(display_key_cfstr as CFTypeRef);
+            if display_value_ref.is_null() {
+                println!("Skipping entry at index {}: no display value", i);
+                continue;
+            }
 
             // if !display_value_ref.is_null() {
             //     let mut entry_display_id: i64 = 0;
