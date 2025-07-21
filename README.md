@@ -6,7 +6,8 @@
 
 <p align="center">Fast workspace navigation for macOS.</p>
 
----
+## Install
+Get the latest installer [HERE](https://github.com/jjkr/quickspace/releases/latest).
 
 ## Features
 
