@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="284" src="https://github.com/jjkr/quickspace/blob/main/src-tauri/icons/Square284x284Logo.png">
+  <img height="150" src="https://github.com/jjkr/quickspace/blob/main/src-tauri/icons/Square150x150Logo.png">
 </p>
 
 <h1 align="center">QuickSpace</h1>
@@ -7,10 +7,6 @@
 <p align="center">Fast workspace navigation for macOS.</p>
 
 ---
-
-# QuickSpace
-
-A simple Tauri app that runs in the background and listens for global hotkeys on macOS.
 
 ## Features
 
