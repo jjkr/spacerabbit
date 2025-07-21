@@ -485,7 +485,7 @@ pub fn restore_mouse_position(original_position: CGPoint) -> Result<(), String> 
 /// # Arguments:
 /// * `event_source` - The CGEventSource to use for creating the event.
 /// * `gesture_phase` - The phase of the gesture (1 for begin, 2 for update, 4 for end/snap).
-/// * `gesture_type` - The type of the gesture (e.g., 0x17 for horizontal swipe).
+/// * `gesture_type` - The type of the gesture (e.g., 1 for horizontal swipe, 2 for vertical swipe).
 /// * `positive_direction` - Whether the swipe is in the positive direction (right/up) or negative (left/down).
 /// # Returns:
 /// * `Ok(())` on success, or an error message if the event could not be created or posted.

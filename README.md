@@ -1,12 +1,21 @@
+<p align="center">
+  <img height="284" src="https://github.com/jjkr/quickspace/blob/main/src-tauri/icons/Square284x284Logo.png">
+</p>
+
+<h1 align="center">QuickSpace</h1>
+
+<p align="center">Fast workspace navigation for macOS.</p>
+
+---
+
 # QuickSpace
 
 A simple Tauri app that runs in the background and listens for global hotkeys on macOS.
 
 ## Features
 
-- Headless background operation
-- Global hotkey support (Alt+L)
-- System tray integration
+- Fast workspace switching with hotkeys
+- Menu bar icon with current workspace number
 
 ## Building and Running
 
@@ -23,23 +32,21 @@ A simple Tauri app that runs in the background and listens for global hotkeys on
 npm install
 
 # Run in development mode
-cargo tauri dev
+npm run tauri:dev
 ```
 
 ### Building
 
 ```bash
 # Build for production
-cargo tauri build
+npm run tauri:build
 ```
 
 ## Usage
 
 1. Run the app - it will start in the background with no visible window
 2. Look for the QuickSpace icon in your system tray
-3. Press Alt+L (Option+L) anywhere on your Mac to trigger the hotkey
-4. Check the console output to see "Alt+L pressed!" messages
-5. Right-click the system tray icon to quit the app
+3. Press Alt+L (Option+L) anywhere on your Mac to go to the next workspace instantly!
 
 ## Replacing icons
 
