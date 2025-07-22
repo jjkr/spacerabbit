@@ -49,7 +49,7 @@ echo "🔨 Building QuickSpace..."
 echo "   This may take a few minutes..."
 
 # Build for current architecture first (faster)
-npm run tauri:build
+npm run tauri build
 
 echo "✅ Build completed successfully!"
 
@@ -57,21 +57,21 @@ echo "✅ Build completed successfully!"
 echo "🌍 Testing architecture-specific builds..."
 
 echo "  📱 Building for Apple Silicon (aarch64)..."
-if npm run tauri:build -- --target aarch64-apple-darwin; then
+if npm run tauri build -- --target aarch64-apple-darwin; then
     echo "  ✅ Apple Silicon build successful!"
 else
     echo "  ⚠️  Apple Silicon build failed"
 fi
 
 echo "  💻 Building for Intel (x86_64)..."
-if npm run tauri:build -- --target x86_64-apple-darwin; then
+if npm run tauri build -- --target x86_64-apple-darwin; then
     echo "  ✅ Intel build successful!"
 else
     echo "  ⚠️  Intel build failed"
 fi
 
 echo "  🌍 Building universal binary..."
-if npm run tauri:build -- --target universal-apple-darwin; then
+if npm run tauri build -- --target universal-apple-darwin; then
     echo "  ✅ Universal binary build successful!"
 else
     echo "  ⚠️  Universal binary build failed (this is normal if you don't have both architectures)"

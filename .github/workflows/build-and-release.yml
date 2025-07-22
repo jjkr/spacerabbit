@@ -29,8 +29,6 @@ jobs:
             
             ### Installation Instructions
             
-            **Important**: This app uses macOS private APIs and is distributed directly (not notarized).
-            
             #### Choose Your Download:
             - **Universal Binary** (\`QuickSpace_${{ github.ref_name }}_universal.dmg\`) - Works on both Intel and Apple Silicon Macs (recommended)
             - **Apple Silicon** (\`QuickSpace_${{ github.ref_name }}_aarch64.dmg\`) - Optimized for M1/M2/M3 Macs
@@ -65,7 +63,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
 
       - name: Setup Rust

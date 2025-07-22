@@ -36,10 +36,10 @@ npm run tauri:dev
 
 ```bash
 # Build for production
-npm run tauri:build
+npm run tauri build
 
 # Build universal binary (Intel + Apple Silicon)
-npm run tauri:build -- --target universal-apple-darwin
+npm run tauri build -- --target universal-apple-darwin
 ```
 
 ## CI/CD and Distribution
@@ -95,7 +95,7 @@ To test your build with production entitlements locally:
 
 ```bash
 # Test with release entitlements
-npm run tauri:build -- --config '{"bundle":{"macOS":{"entitlements":"entitlements.release.plist"}}}'
+npm run tauri build -- --config '{"bundle":{"macOS":{"entitlements":"entitlements.release.plist"}}}'
 
 # Verify entitlements are applied
 ./scripts/test-entitlements.sh

@@ -4,8 +4,8 @@
   "description": "Simple Tauri app with global hotkey support",
   "main": "src/main.js",
   "scripts": {
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri dev": "tauri dev",
+    "tauri build": "tauri build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"

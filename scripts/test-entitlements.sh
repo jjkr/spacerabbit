@@ -30,9 +30,9 @@ done
 
 if [ -z "$APP_PATH" ]; then
     echo "❌ QuickSpace.app not found. Please build the app first:"
-    echo "   npm run tauri:build"
+    echo "   npm run tauri build"
     echo "   or"
-    echo "   npm run tauri:build -- --target universal-apple-darwin"
+    echo "   npm run tauri build -- --target universal-apple-darwin"
     exit 1
 fi
 
@@ -97,7 +97,7 @@ else
     echo "❌ No entitlements found"
     echo "   This will likely cause hotkey issues in distributed builds"
     echo "   Make sure to build with entitlements:"
-    echo "   npm run tauri:build -- --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"entitlements.release.plist\"}}}'"
+    echo "   npm run tauri build -- --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"entitlements.release.plist\"}}}'"
 fi
 
 echo ""
@@ -140,13 +140,13 @@ echo ""
 echo "📝 Build Commands for Testing"
 echo "============================"
 echo "Local development build:"
-echo "  npm run tauri:build"
+echo "  npm run tauri build"
 echo ""
 echo "Production-like build with entitlements:"
-echo "  npm run tauri:build -- --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"entitlements.release.plist\"}}}'"
+echo "  npm run tauri build -- --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"entitlements.release.plist\"}}}'"
 echo ""
 echo "Universal binary with entitlements:"
-echo "  npm run tauri:build -- --target universal-apple-darwin --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"entitlements.release.plist\"}}}'"
+echo "  npm run tauri build -- --target universal-apple-darwin --config '{\"bundle\":{\"macOS\":{\"entitlements\":\"entitlements.release.plist\"}}}'"
 
 echo ""
 echo "✨ Test complete!"

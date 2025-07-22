@@ -115,10 +115,10 @@ Before pushing tags, test your build locally:
 npm ci
 
 # Build for your current architecture
-npm run tauri:build
+npm run tauri build
 
 # Build universal binary (requires both architectures)
-npm run tauri:build -- --target universal-apple-darwin
+npm run tauri build -- --target universal-apple-darwin
 ```
 
 ## Entitlements and Permissions
