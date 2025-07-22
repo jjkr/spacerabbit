@@ -75,7 +75,7 @@ fn main() {
                 .level(if cfg!(debug_assertions) {
                     log::LevelFilter::Debug
                 } else {
-                    log::LevelFilter::Info
+                    log::LevelFilter::Debug
                 })
                 .build(),
         )
