@@ -53,12 +53,28 @@ npm run tauri:build
 
 echo "✅ Build completed successfully!"
 
-# Check if we can build universal binary
-echo "🌍 Testing universal binary build..."
-if npm run tauri:build -- --target universal-apple-darwin; then
-    echo "✅ Universal binary build successful!"
+# Test different architecture builds
+echo "🌍 Testing architecture-specific builds..."
+
+echo "  📱 Building for Apple Silicon (aarch64)..."
+if npm run tauri:build -- --target aarch64-apple-darwin; then
+    echo "  ✅ Apple Silicon build successful!"
 else
-    echo "⚠️  Universal binary build failed (this is normal if you don't have both architectures)"
+    echo "  ⚠️  Apple Silicon build failed"
+fi
+
+echo "  💻 Building for Intel (x86_64)..."
+if npm run tauri:build -- --target x86_64-apple-darwin; then
+    echo "  ✅ Intel build successful!"
+else
+    echo "  ⚠️  Intel build failed"
+fi
+
+echo "  🌍 Building universal binary..."
+if npm run tauri:build -- --target universal-apple-darwin; then
+    echo "  ✅ Universal binary build successful!"
+else
+    echo "  ⚠️  Universal binary build failed (this is normal if you don't have both architectures)"
 fi
 
 echo ""

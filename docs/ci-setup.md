@@ -66,9 +66,13 @@ You can also trigger builds manually:
 ## Build Outputs
 
 ### Release Builds
-- `QuickSpace_v1.0.0_aarch64.dmg` - Apple Silicon (M1/M2/M3) Macs
-- `QuickSpace_v1.0.0_x64.dmg` - Intel Macs
-- `QuickSpace_v1.0.0_universal.dmg` - Universal binary (both architectures)
+The workflow creates three separate DMG files for maximum compatibility:
+
+- `QuickSpace_v1.0.0_universal.dmg` - Universal binary (Intel + Apple Silicon) - **Recommended**
+- `QuickSpace_v1.0.0_aarch64.dmg` - Apple Silicon only (M1/M2/M3) - Smaller file size
+- `QuickSpace_v1.0.0_x64.dmg` - Intel only - For older Macs
+
+**Note**: The universal binary is recommended for most users as it works on all Mac architectures.
 
 ### Development Builds
 - Available as GitHub Actions artifacts

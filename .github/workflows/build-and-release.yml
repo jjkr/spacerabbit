@@ -7,9 +7,54 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.create_release.outputs.release_id }}
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: '${{ github.ref_name }}',
+              name: 'QuickSpace ${{ github.ref_name }}',
+              body: `## QuickSpace ${{ github.ref_name }}
+            
+            ### Installation Instructions
+            
+            **Important**: This app uses macOS private APIs and is distributed directly (not notarized).
+            
+            #### Choose Your Download:
+            - **Universal Binary** (\`QuickSpace_${{ github.ref_name }}_universal.dmg\`) - Works on both Intel and Apple Silicon Macs (recommended)
+            - **Apple Silicon** (\`QuickSpace_${{ github.ref_name }}_aarch64.dmg\`) - Optimized for M1/M2/M3 Macs
+            - **Intel** (\`QuickSpace_${{ github.ref_name }}_x64.dmg\`) - For Intel-based Macs
+            
+            #### Installation Steps:
+            1. Download the appropriate DMG file for your Mac
+            2. Open the DMG and drag QuickSpace to Applications
+            3. Right-click the app and select "Open" (required for first launch)
+            4. Click "Open" when macOS warns about the unidentified developer
+            
+            #### Permissions Required:
+            - **Accessibility**: For global hotkeys and workspace switching
+            - **Input Monitoring**: For detecting keyboard shortcuts
+            
+            Grant these permissions in System Preferences > Security & Privacy > Privacy when prompted.
+            
+            ### What's New
+            - Add your release notes here`,
+              draft: true,
+              prerelease: false
+            });
+            return data.id;
+
+  build-universal:
+    needs: create-release
     runs-on: macos-latest
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,7 +62,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '18'
           cache: 'npm'
 
       - name: Setup Rust
@@ -28,7 +73,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and package app
+      - name: Build Universal Binary
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -39,37 +84,90 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'QuickSpace ${{ github.ref_name }}'
-          releaseBody: |
-            ## QuickSpace ${{ github.ref_name }}
-            
-            ### Installation Instructions
-            
-            **Important**: This app uses macOS private APIs and is distributed directly (not notarized).
-            
-            #### For Apple Silicon Macs (M1/M2/M3):
-            1. Download `QuickSpace_${{ github.ref_name }}_aarch64.dmg`
-            2. Open the DMG and drag QuickSpace to Applications
-            3. Right-click the app and select "Open" (required for first launch)
-            4. Click "Open" when macOS warns about the unidentified developer
-            
-            #### For Intel Macs:
-            1. Download `QuickSpace_${{ github.ref_name }}_x64.dmg`
-            2. Follow the same installation steps as above
-            
-            #### Permissions Required:
-            - **Accessibility**: For global hotkeys and workspace switching
-            - **Input Monitoring**: For detecting keyboard shortcuts
-            
-            Grant these permissions in System Preferences > Security & Privacy > Privacy when prompted.
-            
-            ### What's New
-            - Add your release notes here
-            
-          releaseDraft: true
-          prerelease: false
-          includeDebug: false
-          includeRelease: true
-          includeUpdaterJson: false
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: --target universal-apple-darwin
+
+  build-aarch64:
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Apple Silicon Binary
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: --target aarch64-apple-darwin
+
+  build-x86_64:
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Intel Binary
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          args: --target x86_64-apple-darwin
+
+  publish-release:
+    needs: [create-release, build-universal, build-aarch64, build-x86_64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish Release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: ${{ needs.create-release.outputs.release_id }},
+              draft: false
+            })
