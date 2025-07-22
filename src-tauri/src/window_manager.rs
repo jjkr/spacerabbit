@@ -448,8 +448,8 @@ fn get_focused_window_number() -> Result<i32, String> {
             AXUIElementCopyAttributeValue(sys_wide, attr_names_attr, &mut attribute_names);
         CFRelease(attr_names_attr as CFTypeRef);
 
-        println!(
-            "DEBUG: AXUIElementCopyAttributeValue for AXAttributeNames result: {}",
+        debug!(
+            "AXUIElementCopyAttributeValue for AXAttributeNames result: {}",
             attr_result
         );
 
@@ -467,20 +467,20 @@ fn get_focused_window_number() -> Result<i32, String> {
             -25208 => "kAXErrorNotEnoughPrecision",
             _ => "Unknown error code",
         };
-        println!(
-            "DEBUG: Error code {} means: {}",
+        debug!(
+            "Error code {} means: {}",
             attr_result, error_description
         );
 
         if attr_result == kAXErrorSuccess && !attribute_names.is_null() {
             let attr_count = CFArrayGetCount(attribute_names as CFArrayRef);
-            println!("DEBUG: sys_wide has {} attributes:", attr_count);
+            debug!("DEBUG: sys_wide has {} attributes:", attr_count);
 
             for j in 0..attr_count {
                 let attr_name_ref = CFArrayGetValueAtIndex(attribute_names as CFArrayRef, j);
                 if !attr_name_ref.is_null() {
                     let attr_name = cfstring_to_string(attr_name_ref as CFStringRef);
-                    println!("DEBUG:   - {}", attr_name);
+                    debug!("DEBUG:   - {}", attr_name);
 
                     // Try to get the value of each attribute for debugging
                     let attr_cfstr = create_cfstring(&attr_name);
@@ -502,7 +502,7 @@ fn get_focused_window_number() -> Result<i32, String> {
                             "Unknown"
                         };
 
-                        println!("DEBUG:     Value TypeID: {} ({})", type_id, type_name);
+                        debug!("DEBUG:     Value TypeID: {} ({})", type_id, type_name);
 
                         // Show the actual value using CFShow
                         print!("DEBUG:     Value: ");
@@ -523,7 +523,7 @@ fn get_focused_window_number() -> Result<i32, String> {
                             -25208 => "kAXErrorNotEnoughPrecision",
                             _ => "Unknown error code",
                         };
-                        println!(
+                        debug!(
                             "DEBUG:     Failed to get value (result: {} - {})",
                             value_result, value_error_desc
                         );
@@ -532,17 +532,17 @@ fn get_focused_window_number() -> Result<i32, String> {
             }
             CFRelease(attribute_names);
         } else {
-            println!("DEBUG: sys_wide: failed to get attribute names");
+            debug!("DEBUG: sys_wide: failed to get attribute names");
             if attr_result == -25205 {
-                println!("DEBUG: This is kAXErrorAPIDisabled - Accessibility API is disabled!");
-                println!("DEBUG: The application needs accessibility permissions to work.");
-                println!("DEBUG: Go to System Preferences > Security & Privacy > Privacy > Accessibility");
-                println!("DEBUG: and make sure your application is listed and enabled.");
+                debug!("DEBUG: This is kAXErrorAPIDisabled - Accessibility API is disabled!");
+                debug!("DEBUG: The application needs accessibility permissions to work.");
+                debug!("DEBUG: Go to System Preferences > Security & Privacy > Privacy > Accessibility");
+                debug!("DEBUG: and make sure your application is listed and enabled.");
             }
         }
 
         // Try to directly access the focused application attribute anyway
-        println!("DEBUG: Attempting direct access to AXFocusedApplication attribute...");
+        debug!("DEBUG: Attempting direct access to AXFocusedApplication attribute...");
         let focused_app_attr = create_cfstring(AX_FOCUSED_APPLICATION_ATTRIBUTE);
         let mut focused_app_test: CFTypeRef = ptr::null_mut();
         let direct_result =
@@ -562,17 +562,17 @@ fn get_focused_window_number() -> Result<i32, String> {
             -25208 => "kAXErrorNotEnoughPrecision",
             _ => "Unknown error code",
         };
-        println!(
+        debug!(
             "DEBUG: Direct AXFocusedApplication access result: {} ({})",
             direct_result, direct_error_desc
         );
 
         if direct_result == kAXErrorSuccess && !focused_app_test.is_null() {
-            println!("DEBUG: Successfully got focused application directly!");
+            debug!("DEBUG: Successfully got focused application directly!");
             CFRelease(focused_app_test);
         }
 
-        println!("DEBUG: ========== End sys_wide properties ==========");
+        debug!("DEBUG: ========== End sys_wide properties ==========");
 
         // Get focused application
         let focused_app_attr = create_cfstring(AX_FOCUSED_APPLICATION_ATTRIBUTE);
@@ -582,11 +582,11 @@ fn get_focused_window_number() -> Result<i32, String> {
         CFRelease(focused_app_attr as CFTypeRef);
 
         if result != kAXErrorSuccess || focused_app.is_null() {
-            println!("DEBUG: Cannot get focused application (result: {})", result);
+            debug!("DEBUG: Cannot get focused application (result: {})", result);
             return Err("Cannot get focused application".to_string());
         }
 
-        println!("DEBUG: Successfully got focused application");
+        debug!("DEBUG: Successfully got focused application");
 
         // Get focused window
         let focused_win_attr = create_cfstring(AX_FOCUSED_WINDOW_ATTRIBUTE);
@@ -599,12 +599,12 @@ fn get_focused_window_number() -> Result<i32, String> {
         CFRelease(focused_win_attr as CFTypeRef);
 
         if result != kAXErrorSuccess || focused_win.is_null() {
-            println!("DEBUG: Cannot get focused window (result: {})", result);
+            debug!("DEBUG: Cannot get focused window (result: {})", result);
             CFRelease(focused_app);
             return Err("Cannot get focused window".to_string());
         }
 
-        println!("DEBUG: Successfully got focused window");
+        debug!("DEBUG: Successfully got focused window");
 
         // Get window number
         let window_number = get_ax_window_number(focused_win as AXUIElementRef);
@@ -613,8 +613,8 @@ fn get_focused_window_number() -> Result<i32, String> {
         CFRelease(focused_app);
 
         match &window_number {
-            Ok(num) => println!("DEBUG: Focused window number: {}", num),
-            Err(e) => println!("DEBUG: Failed to get window number: {}", e),
+            Ok(num) => debug!("DEBUG: Focused window number: {}", num),
+            Err(e) => debug!("DEBUG: Failed to get window number: {}", e),
         }
 
         window_number
@@ -623,10 +623,10 @@ fn get_focused_window_number() -> Result<i32, String> {
 
 /// Focus a window by its window number using Accessibility APIs
 fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
-    println!("DEBUG: Attempting to focus window {}", target_window_number);
+    debug!("DEBUG: Attempting to focus window {}", target_window_number);
     unsafe {
         // First, find the PID that owns this window
-        println!(
+        debug!(
             "DEBUG: Looking up window info for window {}",
             target_window_number
         );
@@ -635,7 +635,7 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
             0,
         );
         if window_list.is_null() {
-            println!(
+            debug!(
                 "DEBUG: Failed to get window info for window {}",
                 target_window_number
             );
@@ -643,13 +643,13 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
         }
 
         let window_count = CFArrayGetCount(window_list);
-        println!(
+        debug!(
             "DEBUG: Found {} window entries for window {}",
             window_count, target_window_number
         );
         if window_count == 0 {
             CFRelease(window_list as CFTypeRef);
-            println!(
+            debug!(
                 "DEBUG: No window entries found for window {}",
                 target_window_number
             );
@@ -659,28 +659,28 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
         let mut window_dict: CFDictionaryRef = ptr::null();
         for i in 0..window_count {
             let w = CFArrayGetValueAtIndex(window_list, i);
-            println!("DEBUG: Checking window entry {} at address {:p}", i, w);
+            debug!("DEBUG: Checking window entry {} at address {:p}", i, w);
             if w == ptr::null() || w.is_null() {
-                println!("DEBUG: Skipping null window entry");
+                debug!("DEBUG: Skipping null window entry");
                 continue;
             }
 
-            println!("DEBUG: Window entry {} is valid, checking contents", i);
+            debug!("DEBUG: Window entry {} is valid, checking contents", i);
             let window_number = get_dict_number(w as CFDictionaryRef, CG_WINDOW_NUMBER);
-            println!(
+            debug!(
                 "DEBUG: Window entry {} has window number {}",
                 i, window_number
             );
 
             if window_number != target_window_number {
-                println!(
+                debug!(
                     "DEBUG: Skipping window entry {} (not target window {})",
                     i, target_window_number
                 );
                 continue;
             }
 
-            println!(
+            debug!(
                 "DEBUG: Found matching window {} at index {}",
                 target_window_number, i
             );
@@ -690,13 +690,13 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
             // let pid = get_dict_number(window_dict, CG_WINDOW_OWNER_PID);
             // let app_name = get_dict_string(window_dict, CG_WINDOW_OWNER_NAME);
             // let window_name = get_dict_string(window_dict, CG_WINDOW_NAME);
-            // println!("DEBUG: Window {} (PID: {}) - App: '{}', Title: '{}'",
+            // debug!("DEBUG: Window {} (PID: {}) - App: '{}', Title: '{}'",
             //     window_number, pid, app_name, window_name);
         }
 
         if window_dict.is_null() {
             CFRelease(window_list as CFTypeRef);
-            println!(
+            debug!(
                 "DEBUG: No valid window dictionary found for window {}",
                 target_window_number
             );
@@ -711,14 +711,14 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
         let app_name = get_dict_string(window_dict, CG_WINDOW_OWNER_NAME);
         let window_name = get_dict_string(window_dict, CG_WINDOW_NAME);
         let target_cg_bounds = get_dict_bounds(window_dict, CG_WINDOW_BOUNDS);
-        println!(
+        debug!(
             "DEBUG: Window {} belongs to PID {} (app: '{}', title: '{}')",
             target_window_number, target_pid, app_name, window_name
         );
         CFRelease(window_list as CFTypeRef);
 
         if target_pid == 0 {
-            println!("DEBUG: Invalid PID (0) for window {}", target_window_number);
+            debug!("DEBUG: Invalid PID (0) for window {}", target_window_number);
             return Err(format!(
                 "Cannot determine PID for window {}",
                 target_window_number
@@ -726,38 +726,38 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
         }
 
         // Create the app element and find the AX window element with matching window number
-        println!("DEBUG: Creating application element for PID {}", target_pid);
+        debug!("DEBUG: Creating application element for PID {}", target_pid);
         let app_element = AXUIElementCreateApplication(target_pid);
         if app_element.is_null() {
-            println!(
+            debug!(
                 "DEBUG: Failed to create application element for PID {}",
                 target_pid
             );
             return Err("Failed to create application element".to_string());
         }
 
-        println!("DEBUG: Getting windows list from application element");
+        debug!("DEBUG: Getting windows list from application element");
         let windows_attr = create_cfstring(AX_WINDOWS_ATTRIBUTE);
         let mut app_windows: CFTypeRef = ptr::null_mut();
         let result = AXUIElementCopyAttributeValue(app_element, windows_attr, &mut app_windows);
         CFRelease(windows_attr as CFTypeRef);
 
         if result != kAXErrorSuccess || app_windows.is_null() {
-            println!("DEBUG: Cannot get application windows (result: {})", result);
+            debug!("DEBUG: Cannot get application windows (result: {})", result);
             return Err("Cannot get application windows".to_string());
         }
 
         let window_count = CFArrayGetCount(app_windows as CFArrayRef);
-        println!("DEBUG: Application has {} AX windows", window_count);
+        debug!("DEBUG: Application has {} AX windows", window_count);
         let mut target_window: AXUIElementRef = ptr::null_mut();
 
         // Strategy 1: If there's only one AX window, use it (common case)
         if window_count == 1 {
             target_window = CFArrayGetValueAtIndex(app_windows as CFArrayRef, 0) as AXUIElementRef;
-            println!("DEBUG: Only one AX window available, using it directly");
+            debug!("DEBUG: Only one AX window available, using it directly");
         } else {
             // Strategy 2: Try to match using title and bounds
-            println!("DEBUG: Multiple AX windows found, attempting to match by title/bounds");
+            debug!("DEBUG: Multiple AX windows found, attempting to match by title/bounds");
 
             // Set the window title
             let title_attr = create_cfstring(AX_TITLE_ATTRIBUTE);
@@ -765,11 +765,11 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
             let set_title_result =
                 AXUIElementSetAttributeValue(app_element, title_attr, tmp_title as CFTypeRef);
             CFRelease(tmp_title as CFTypeRef);
-            println!("DEBUG: Set window title result: {}", set_title_result);
+            debug!("DEBUG: Set window title result: {}", set_title_result);
 
             for i in 0..window_count {
                 let window = CFArrayGetValueAtIndex(app_windows as CFArrayRef, i) as AXUIElementRef;
-                println!("DEBUG: Examining AX window {} at address {:p}", i, window);
+                debug!("DEBUG: Examining AX window {} at address {:p}", i, window);
 
                 // Let's try to get all available attributes for this window
                 let mut attribute_names: CFArrayRef = ptr::null_mut();
@@ -777,18 +777,18 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
 
                 if attr_result == kAXErrorSuccess && !attribute_names.is_null() {
                     let attr_count = CFArrayGetCount(attribute_names as CFArrayRef);
-                    println!("DEBUG: AX window {} has {} attributes:", i, attr_count);
+                    debug!("DEBUG: AX window {} has {} attributes:", i, attr_count);
                     for j in 0..attr_count {
                         let attr_name_ref =
                             CFArrayGetValueAtIndex(attribute_names as CFArrayRef, j);
                         if !attr_name_ref.is_null() {
                             let attr_name = cfstring_to_string(attr_name_ref as CFStringRef);
-                            println!("DEBUG:   - {}", attr_name);
+                            debug!("DEBUG:   - {}", attr_name);
                         }
                     }
                     CFRelease(attribute_names as CFTypeRef);
                 } else {
-                    println!(
+                    debug!(
                         "DEBUG: AX window {}: failed to get attribute names (result: {})",
                         i, attr_result
                     );
@@ -797,7 +797,7 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
                 // Try to match this AX window to our target CG window
                 if match_ax_window_to_cg_window(window, &window_name, target_cg_bounds, i as usize)
                 {
-                    println!("DEBUG: Found matching AX window at index {}", i);
+                    debug!("DEBUG: Found matching AX window at index {}", i);
                     target_window = window;
                     break;
                 }
@@ -805,14 +805,14 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
 
             // Strategy 3: If no match found, use the first window as fallback
             if target_window.is_null() {
-                println!("DEBUG: No exact match found, using first AX window as fallback");
+                debug!("DEBUG: No exact match found, using first AX window as fallback");
                 target_window =
                     CFArrayGetValueAtIndex(app_windows as CFArrayRef, 0) as AXUIElementRef;
             }
         }
 
         if target_window.is_null() {
-            println!(
+            debug!(
                 "DEBUG: Could not get any AX window from {} available windows",
                 window_count
             );
@@ -821,25 +821,25 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
         }
 
         // Focus the window using Accessibility APIs
-        println!(
+        debug!(
             "DEBUG: Performing AXRaise action on window {}",
             target_window_number
         );
         let raise_action = create_cfstring(AX_RAISE_ACTION);
         let raise_result = AXUIElementPerformAction(target_window, raise_action);
         CFRelease(raise_action as CFTypeRef);
-        println!("DEBUG: AXRaise result: {}", raise_result);
+        debug!("DEBUG: AXRaise result: {}", raise_result);
 
-        println!("DEBUG: Setting focused window attribute");
+        debug!("DEBUG: Setting focused window attribute");
         let focused_win_attr = create_cfstring(AX_FOCUSED_WINDOW_ATTRIBUTE);
         let focus_result =
             AXUIElementSetAttributeValue(app_element, focused_win_attr, target_window as CFTypeRef);
         CFRelease(focused_win_attr as CFTypeRef);
-        println!("DEBUG: Set focused window result: {}", focus_result);
+        debug!("DEBUG: Set focused window result: {}", focus_result);
 
         CFRelease(app_windows);
 
-        println!(
+        debug!(
             "DEBUG: Successfully focused window {}",
             target_window_number
         );
@@ -916,26 +916,26 @@ pub fn get_focused_window() -> Result<Option<WindowInfo>, String> {
 
 /// Cycle to the next window using the proper accessibility-based approach
 pub fn cycle_next_window() -> Result<(), String> {
-    println!("DEBUG: ========== Starting window cycling ==========");
+    debug!("DEBUG: ========== Starting window cycling ==========");
 
     // Check accessibility permission first
-    println!("DEBUG: Checking accessibility permission...");
+    debug!("DEBUG: Checking accessibility permission...");
     check_accessibility_permission()?;
-    println!("DEBUG: Accessibility permission OK");
+    debug!("DEBUG: Accessibility permission OK");
 
     // Get all visible layer-0 window numbers in front-to-back order
     let window_numbers = get_visible_window_numbers()?;
 
     if window_numbers.is_empty() {
-        println!("DEBUG: No visible windows found, aborting");
+        debug!("DEBUG: No visible windows found, aborting");
         return Err("No visible windows found".to_string());
     }
 
-    println!("DEBUG: Found {} visible windows", window_numbers.len());
+    debug!("DEBUG: Found {} visible windows", window_numbers.len());
 
     if window_numbers.len() == 1 {
         // Only one window, focus it
-        println!(
+        debug!(
             "DEBUG: Only one window available, focusing it: {}",
             window_numbers[0]
         );
@@ -945,11 +945,11 @@ pub fn cycle_next_window() -> Result<(), String> {
     // Get the current focused window number
     let current_window_number = match get_focused_window_number() {
         Ok(num) => {
-            println!("DEBUG: Current focused window: {}", num);
+            debug!("DEBUG: Current focused window: {}", num);
             num
         }
         Err(e) => {
-            println!(
+            debug!(
                 "DEBUG: Could not get focused window ({}), focusing first available: {}",
                 e, window_numbers[0]
             );
@@ -965,14 +965,14 @@ pub fn cycle_next_window() -> Result<(), String> {
     let next_index = match current_index {
         Some(idx) => {
             let next = (idx + 1) % window_numbers.len();
-            println!(
+            debug!(
                 "DEBUG: Current window {} is at index {}, next index: {}",
                 current_window_number, idx, next
             );
             next
         }
         None => {
-            println!(
+            debug!(
                 "DEBUG: Current window {} not found in visible list, starting from beginning",
                 current_window_number
             );
@@ -981,12 +981,12 @@ pub fn cycle_next_window() -> Result<(), String> {
     };
 
     let target_window_number = window_numbers[next_index];
-    println!("DEBUG: Target window to focus: {}", target_window_number);
+    debug!("DEBUG: Target window to focus: {}", target_window_number);
 
     let result = focus_window_by_number(target_window_number);
     match &result {
-        Ok(_) => println!("DEBUG: ========== Window cycling completed successfully =========="),
-        Err(e) => println!("DEBUG: ========== Window cycling failed: {} ==========", e),
+        Ok(_) => debug!("DEBUG: ========== Window cycling completed successfully =========="),
+        Err(e) => debug!("DEBUG: ========== Window cycling failed: {} ==========", e),
     }
 
     result
