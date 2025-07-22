@@ -13,6 +13,7 @@ use core_foundation::string::{
     kCFStringEncodingUTF8, CFStringCreateWithCString, CFStringGetCString, CFStringGetCStringPtr,
     CFStringGetTypeID, CFStringRef,
 };
+use log::{debug, error, info, warn};
 use std::ptr;
 
 // =============================================================================
@@ -65,7 +66,7 @@ pub fn cfstring_to_string(cf_str: CFStringRef) -> String {
             }
             String::from_utf8_lossy(&buffer).into_owned()
         } else {
-            println!("WARNING: Failed to convert CFString to C string");
+            warn!("Failed to convert CFString to C string");
             String::new()
         }
     }
@@ -87,8 +88,8 @@ pub fn get_dict_string(dict: CFDictionaryRef, key: &str) -> String {
                 cfstring_to_string(value_ref as CFStringRef)
             } else {
                 // It's not a CFString, let's see what it is
-                println!(
-                    "WARNING: Key '{}' is not a CFString (TypeID: {} vs expected: {})",
+                warn!(
+                    "Key '{}' is not a CFString (TypeID: {} vs expected: {})",
                     key, type_id, string_type_id
                 );
 
@@ -108,7 +109,7 @@ pub fn get_dict_string(dict: CFDictionaryRef, key: &str) -> String {
                     }
                 } else {
                     // Unknown type, use CFShow to get a description
-                    println!("Unknown type for key '{}', using CFShow:", key);
+                    debug!("Unknown type for key '{}', using CFShow:", key);
                     CFShow(value_ref);
                     format!("<Unknown type: TypeID {}>", type_id)
                 }
@@ -175,7 +176,7 @@ pub fn print_full_dictionary(dict: CFDictionaryRef) {
         use core_foundation::dictionary::{CFDictionaryGetCount, CFDictionaryGetKeysAndValues};
 
         let count = CFDictionaryGetCount(dict);
-        println!("  Dictionary has {} key-value pairs:", count);
+        debug!("  Dictionary has {} key-value pairs:", count);
 
         if count > 0 {
             // Allocate arrays for keys and values
@@ -207,19 +208,19 @@ pub fn print_full_dictionary(dict: CFDictionaryRef) {
                         "Unknown"
                     };
 
-                    println!("  {}: TypeID {} ({})", key_string, type_id, type_name);
+                    debug!("  {}: TypeID {} ({})", key_string, type_id, type_name);
 
                     // Show the actual value using CFShow for non-strings
                     if type_id != string_type_id {
-                        print!("    Value: ");
+                        debug!("    Value: ");
                         CFShow(value_ref);
                     } else {
                         // For strings, also show the converted value
                         let string_value = cfstring_to_string(value_ref as CFStringRef);
-                        println!("    Value: \"{}\"", string_value);
+                        debug!("    Value: \"{}\"", string_value);
                     }
                 } else {
-                    println!("  Key or value at index {} is NULL", i);
+                    debug!("  Key or value at index {} is NULL", i);
                 }
             }
         }

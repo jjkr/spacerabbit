@@ -5,6 +5,7 @@ use global_hotkey::{
     hotkey::{Code, HotKey, Modifiers},
     GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState,
 };
+use log::{debug, error, info, warn};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -13,6 +14,7 @@ use tauri::{
     tray::{TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager,
 };
+use tauri_plugin_log::{Target, TargetKind};
 
 // Shared state for tracking current desktop and display
 #[derive(Debug, Clone)]
@@ -23,8 +25,6 @@ struct AppState {
 }
 
 fn main() {
-    println!("QuickSpace starting...");
-
     // Initialize shared state
     let app_state = AppState {
         current_desktop: Arc::new(Mutex::new(1)),
@@ -62,12 +62,27 @@ fn main() {
     manager
         .register(hotkey_window_cycle)
         .expect("Failed to register Alt+Tab hotkey");
-    println!("Registered Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling) global hotkeys");
 
     let mut app = tauri::Builder::default()
         .manage(app_state.clone())
         .plugin(tauri_plugin_shell::init())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::LogDir { file_name: None }),
+                ])
+                .level(if cfg!(debug_assertions) {
+                    log::LevelFilter::Debug
+                } else {
+                    log::LevelFilter::Info
+                })
+                .build(),
+        )
         .setup(move |app| {
+            info!("QuickSpace starting...");
+            info!("Registered Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling) global hotkeys");
+            
             let app_handle = app.handle();
             let state = app_state.clone();
 
@@ -83,16 +98,16 @@ fn main() {
                 .title(&initial_title)
                 .on_tray_icon_event(move |_tray, event| match event {
                     TrayIconEvent::Click { .. } => {
-                        println!("Tray icon clicked");
+                        debug!("Tray icon clicked");
                     }
                     TrayIconEvent::DoubleClick { .. } => {
-                        println!("Tray icon double-clicked");
+                        debug!("Tray icon double-clicked");
                     }
                     _ => {}
                 })
                 .on_menu_event(move |app, event| match event.id().as_ref() {
                     "quit" => {
-                        println!("Quit menu item clicked - exiting");
+                        info!("Quit menu item clicked - exiting");
                         std::process::exit(0);
                     }
                     "hide" => {
@@ -104,7 +119,7 @@ fn main() {
                 })
                 .build(app)?;
 
-            println!("Setting initial tray text to: {}", initial_desktop);
+            debug!("Setting initial tray text to: {}", initial_desktop);
 
             // Hide the main window on startup
             if let Some(window) = app.get_webview_window("main") {
@@ -133,12 +148,12 @@ fn main() {
                 cursor_monitor_thread(app_handle_cursor, state_cursor);
             });
 
-            println!("QuickSpace is now running in the background.");
-            println!("   Alt+H: Switch to left workspace");
-            println!("   Alt+L: Switch to right workspace");
-            println!("   Alt+E: Toggle Mission Control");
-            println!("   Alt+Tab: Cycle through windows on current workspace");
-            println!("   Tray shows current desktop number for cursor's display");
+            info!("QuickSpace is now running in the background.");
+            info!("   Alt+H: Switch to left workspace");
+            info!("   Alt+L: Switch to right workspace");
+            info!("   Alt+E: Toggle Mission Control");
+            info!("   Alt+Tab: Cycle through windows on current workspace");
+            info!("   Tray shows current desktop number for cursor's display");
             Ok(())
         })
         .build(tauri::generate_context!())
@@ -176,8 +191,9 @@ fn hotkey_listener_thread(
                 match event.id {
                     id if id == hotkey_left.id() => {
                         if let Err(e) = workspace_switcher::switch_left() {
-                            eprintln!("Failed to switch left: {}", e);
+                            error!("Failed to switch left: {}", e);
                         } else {
+                            debug!("Switched to left workspace");
                             // Update tray text after workspace change (small delay for system to catch up)
                             thread::sleep(Duration::from_millis(100));
                             update_tray_text_for_current_context(&app_handle, &state);
@@ -185,8 +201,9 @@ fn hotkey_listener_thread(
                     }
                     id if id == hotkey_right.id() => {
                         if let Err(e) = workspace_switcher::switch_right() {
-                            eprintln!("Failed to switch right: {}", e);
+                            error!("Failed to switch right: {}", e);
                         } else {
+                            debug!("Switched to right workspace");
                             // Update tray text after workspace change (small delay for system to catch up)
                             thread::sleep(Duration::from_millis(100));
                             update_tray_text_for_current_context(&app_handle, &state);
@@ -204,37 +221,37 @@ fn hotkey_listener_thread(
                         if is_active {
                             // Mission Control is currently active, so deactivate it
                             if let Err(e) = workspace_switcher::deactivate_mission_control() {
-                                eprintln!("Failed to deactivate mission control: {}", e);
+                                error!("Failed to deactivate mission control: {}", e);
                                 // Revert state on error
                                 if let Ok(mut mc_active) = state.mission_control_active.lock() {
                                     *mc_active = true;
                                 }
                             } else {
-                                println!("Mission Control deactivated");
+                                info!("Mission Control deactivated");
                             }
                         } else {
                             // Mission Control is currently inactive, so activate it
                             if let Err(e) = workspace_switcher::activate_mission_control() {
-                                eprintln!("Failed to activate mission control: {}", e);
+                                error!("Failed to activate mission control: {}", e);
                                 // Revert state on error
                                 if let Ok(mut mc_active) = state.mission_control_active.lock() {
                                     *mc_active = false;
                                 }
                             } else {
-                                println!("Mission Control activated");
+                                info!("Mission Control activated");
                             }
                         }
                     }
                     id if id == hotkey_window_cycle.id() => {
                         // Cycle to next window on current workspace
                         if let Err(e) = window_manager::cycle_next_window() {
-                            eprintln!("Failed to cycle to next window: {}", e);
+                            error!("Failed to cycle to next window: {}", e);
                         } else {
-                            println!("Cycled to next window");
+                            debug!("Cycled to next window");
                         }
                     }
                     _ => {
-                        println!("Unknown hotkey event: {:?}", event);
+                        warn!("Unknown hotkey event: {:?}", event);
                     }
                 }
             }
@@ -269,7 +286,7 @@ fn cursor_monitor_thread(app_handle: AppHandle, state: AppState) {
 
                 // Only log when there are actual changes
                 if display_changed || desktop_changed {
-                    println!("Desktop switched to: {}", display_info.current_desktop);
+                    info!("Desktop switched to: {}", display_info.current_desktop);
                 }
 
                 if display_changed || desktop_changed {
@@ -302,7 +319,7 @@ fn update_tray_text(app_handle: &AppHandle, desktop_num: u32) {
 
     if let Some(tray) = app_handle.tray_by_id("main") {
         if let Err(e) = tray.set_title(Some(&title)) {
-            eprintln!("Failed to update tray title: {}", e);
+            error!("Failed to update tray title: {}", e);
         }
     }
 }
@@ -318,7 +335,7 @@ fn update_tray_text_for_current_context(app_handle: &AppHandle, state: &AppState
             update_tray_text(app_handle, desktop_num);
         }
         Err(e) => {
-            eprintln!("Failed to get current context desktop: {}", e);
+            error!("Failed to get current context desktop: {}", e);
         }
     }
 }

@@ -17,6 +17,7 @@ use core_foundation::string::{
     CFStringGetTypeID, CFStringRef,
 };
 use core_graphics::window;
+use log::{debug, error, info, warn};
 use std::ffi::{CStr, CString};
 use std::ptr;
 
@@ -186,16 +187,16 @@ fn get_ax_window_bounds(window: AXUIElementRef) -> (f64, f64, f64, f64) {
 
         if frame_result == kAXErrorSuccess && !frame_value.is_null() {
             // AXFrame should be a CGRect structure, but let's be careful about accessing it
-            println!("DEBUG: Successfully got AXFrame value");
+            debug!("Successfully got AXFrame value");
 
             // Check if it's actually a dictionary before treating it as one
             let type_id = CFGetTypeID(frame_value);
-            println!("DEBUG: AXFrame value TypeID: {}", type_id);
+            debug!("AXFrame value TypeID: {}", type_id);
 
             // For now, just release and fall back to position/size approach
             CFRelease(frame_value);
         } else {
-            println!("DEBUG: Failed to get AXFrame (result: {})", frame_result);
+            debug!("Failed to get AXFrame (result: {})", frame_result);
         }
 
         // Use AXPosition + AXSize approach (safer)
@@ -216,29 +217,29 @@ fn get_ax_window_bounds(window: AXUIElementRef) -> (f64, f64, f64, f64) {
         let mut height = 0.0;
 
         if pos_result == kAXErrorSuccess && !pos_value.is_null() {
-            println!("DEBUG: Successfully got AXPosition value");
+            debug!("Successfully got AXPosition value");
             let type_id = CFGetTypeID(pos_value);
-            println!("DEBUG: AXPosition value TypeID: {}", type_id);
+            debug!("AXPosition value TypeID: {}", type_id);
 
             // For now, just use default values and release
             CFRelease(pos_value);
         } else {
-            println!("DEBUG: Failed to get AXPosition (result: {})", pos_result);
+            debug!("Failed to get AXPosition (result: {})", pos_result);
         }
 
         if size_result == kAXErrorSuccess && !size_value.is_null() {
-            println!("DEBUG: Successfully got AXSize value");
+            debug!("Successfully got AXSize value");
             let type_id = CFGetTypeID(size_value);
-            println!("DEBUG: AXSize value TypeID: {}", type_id);
+            debug!("AXSize value TypeID: {}", type_id);
 
             // For now, just use default values and release
             CFRelease(size_value);
         } else {
-            println!("DEBUG: Failed to get AXSize (result: {})", size_result);
+            debug!("Failed to get AXSize (result: {})", size_result);
         }
 
-        println!(
-            "DEBUG: Returning bounds: ({}, {}, {}, {})",
+        debug!(
+            "Returning bounds: ({}, {}, {}, {})",
             x, y, width, height
         );
         (x, y, width, height)
@@ -252,37 +253,37 @@ fn match_ax_window_to_cg_window(
     target_cg_bounds: (f64, f64, f64, f64),
     ax_index: usize,
 ) -> bool {
-    println!("DEBUG: Matching AX window {} against CG window", ax_index);
+    debug!("Matching AX window {} against CG window", ax_index);
 
     // Get AX window properties
     let ax_title = get_ax_window_title(ax_window);
     let ax_bounds = get_ax_window_bounds(ax_window);
 
-    println!(
-        "DEBUG: AX window {}: title='{}', bounds={:?}",
+    debug!(
+        "AX window {}: title='{}', bounds={:?}",
         ax_index, ax_title, ax_bounds
     );
-    println!(
-        "DEBUG: Target CG window: title='{}', bounds={:?}",
+    debug!(
+        "Target CG window: title='{}', bounds={:?}",
         target_cg_title, target_cg_bounds
     );
 
     // Strategy 1: Title matching (if both have non-empty titles)
     if !ax_title.is_empty() && !target_cg_title.is_empty() {
         if ax_title == target_cg_title {
-            println!(
-                "DEBUG: MATCH: Title match - '{}' == '{}'",
+            debug!(
+                "MATCH: Title match - '{}' == '{}'",
                 ax_title, target_cg_title
             );
             return true;
         } else {
-            println!(
-                "DEBUG: Title mismatch - '{}' != '{}'",
+            debug!(
+                "Title mismatch - '{}' != '{}'",
                 ax_title, target_cg_title
             );
         }
     } else {
-        println!("DEBUG: Skipping title match (one or both titles empty)");
+        debug!("Skipping title match (one or both titles empty)");
     }
 
     // Strategy 2: Bounds matching (with tolerance for slight differences)
@@ -293,14 +294,14 @@ fn match_ax_window_to_cg_window(
     let h_match = (ax_bounds.3 - target_cg_bounds.3).abs() <= tolerance;
 
     if x_match && y_match && w_match && h_match {
-        println!(
-            "DEBUG: MATCH: Bounds match within tolerance of {} pixels",
+        debug!(
+            "MATCH: Bounds match within tolerance of {} pixels",
             tolerance
         );
         return true;
     } else {
-        println!(
-            "DEBUG: Bounds mismatch - x:{}, y:{}, w:{}, h:{}",
+        debug!(
+            "Bounds mismatch - x:{}, y:{}, w:{}, h:{}",
             x_match, y_match, w_match, h_match
         );
     }
@@ -313,36 +314,36 @@ fn match_ax_window_to_cg_window(
 
 /// Get the integer window number from an AXUIElement (DEPRECATED - AXWindowNumber doesn't exist)
 fn get_ax_window_number(window: AXUIElementRef) -> Result<i32, String> {
-    println!(
-        "DEBUG: get_ax_window_number: Starting for window at address {:p}",
+    debug!(
+        "get_ax_window_number: Starting for window at address {:p}",
         window
     );
-    println!("DEBUG: WARNING: AXWindowNumber attribute does not exist on AX windows!");
-    println!("DEBUG: This function is deprecated and will always fail.");
+    debug!("WARNING: AXWindowNumber attribute does not exist on AX windows!");
+    debug!("This function is deprecated and will always fail.");
 
     unsafe {
         let attr_name = create_cfstring(AX_WINDOW_NUMBER_ATTRIBUTE);
         let mut value: CFTypeRef = ptr::null_mut();
 
-        println!(
-            "DEBUG: get_ax_window_number: Calling AXUIElementCopyAttributeValue for attribute '{}'",
+        debug!(
+            "get_ax_window_number: Calling AXUIElementCopyAttributeValue for attribute '{}'",
             AX_WINDOW_NUMBER_ATTRIBUTE
         );
         let result = AXUIElementCopyAttributeValue(window, attr_name, &mut value);
         CFRelease(attr_name as CFTypeRef);
 
-        println!(
-            "DEBUG: get_ax_window_number: AXUIElementCopyAttributeValue result: {}",
+        debug!(
+            "get_ax_window_number: AXUIElementCopyAttributeValue result: {}",
             result
         );
         if result != kAXErrorSuccess {
             let error_msg = format!("AXUIElementCopyAttributeValue failed with error: {} (EXPECTED - AXWindowNumber doesn't exist)", result);
-            println!("DEBUG: get_ax_window_number: {}", error_msg);
+            debug!("get_ax_window_number: {}", error_msg);
             return Err(error_msg);
         }
 
         // This code should never be reached since AXWindowNumber doesn't exist
-        println!("DEBUG: get_ax_window_number: Unexpected success - this shouldn't happen!");
+        debug!("get_ax_window_number: Unexpected success - this shouldn't happen!");
         if !value.is_null() {
             CFRelease(value);
         }
@@ -357,7 +358,7 @@ fn get_ax_window_number(window: AXUIElementRef) -> Result<i32, String> {
 
 /// Get all visible layer-0 window numbers in front-to-back order
 fn get_visible_window_numbers() -> Result<Vec<i32>, String> {
-    println!("DEBUG: Getting visible window numbers...");
+    debug!("Getting visible window numbers...");
     unsafe {
         let window_list = CGWindowListCopyWindowInfo(
             kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
@@ -365,12 +366,12 @@ fn get_visible_window_numbers() -> Result<Vec<i32>, String> {
         );
 
         if window_list.is_null() {
-            println!("DEBUG: Failed to get window list from CGWindowListCopyWindowInfo");
+            debug!("Failed to get window list from CGWindowListCopyWindowInfo");
             return Err("Failed to get window list".to_string());
         }
 
         let window_count = CFArrayGetCount(window_list);
-        println!("DEBUG: Found {} total windows in list", window_count);
+        debug!("Found {} total windows in list", window_count);
         let mut window_numbers = Vec::new();
 
         for i in 0..window_count {
@@ -389,29 +390,29 @@ fn get_visible_window_numbers() -> Result<Vec<i32>, String> {
                 let window_name = get_dict_string(window_dict, CG_WINDOW_NAME);
                 let bounds = get_dict_bounds(window_dict, CG_WINDOW_BOUNDS);
 
-                println!(
-                    "DEBUG: Window {}: ID={}, Layer={}, PID={}, App='{}', Title='{}', Bounds={:?}",
+                debug!(
+                    "Window {}: ID={}, Layer={}, PID={}, App='{}', Title='{}', Bounds={:?}",
                     i, window_number, layer, pid, app_name, window_name, bounds
                 );
 
                 // Only layer 0 windows
                 if layer != 0 {
-                    println!("DEBUG: Skipping window {} (layer {})", window_number, layer);
+                    debug!("Skipping window {} (layer {})", window_number, layer);
                     continue;
                 }
 
                 // Extract the window number
                 window_numbers.push(window_number);
-                println!("DEBUG: Added layer-0 window {} to list", window_number);
+                debug!("Added layer-0 window {} to list", window_number);
             }
         }
 
         CFRelease(window_list as CFTypeRef);
 
-        println!("DEBUG: Final visible window numbers: {:?}", window_numbers);
+        debug!("Final visible window numbers: {:?}", window_numbers);
 
         if window_numbers.is_empty() {
-            println!("DEBUG: No visible layer-0 windows found");
+            debug!("No visible layer-0 windows found");
             return Err("No visible windows found".to_string());
         }
 
@@ -421,23 +422,23 @@ fn get_visible_window_numbers() -> Result<Vec<i32>, String> {
 
 /// Get the currently focused window number using Accessibility APIs
 fn get_focused_window_number() -> Result<i32, String> {
-    println!("DEBUG: Getting focused window number...");
+    debug!("Getting focused window number...");
     unsafe {
         let sys_wide = AXUIElementCreateSystemWide();
         if sys_wide.is_null() {
-            println!("DEBUG: Failed to create system-wide element");
+            debug!("Failed to create system-wide element");
             return Err("Failed to create system-wide element".to_string());
         }
 
         // DEBUG: Print all properties of sys_wide
-        println!("DEBUG: ========== sys_wide element properties ==========");
-        println!("DEBUG: sys_wide element address: {:p}", sys_wide);
+        debug!("========== sys_wide element properties ==========");
+        debug!("sys_wide element address: {:p}", sys_wide);
 
         // First check accessibility permission status
         let accessibility_check = check_accessibility_permission();
         match &accessibility_check {
-            Ok(_) => println!("DEBUG: Accessibility permission check: GRANTED"),
-            Err(e) => println!("DEBUG: Accessibility permission check: FAILED - {}", e),
+            Ok(_) => debug!("Accessibility permission check: GRANTED"),
+            Err(e) => debug!("Accessibility permission check: FAILED - {}", e),
         }
 
         // Get all available attributes for sys_wide

@@ -12,6 +12,7 @@ use core_graphics::event::{CGEvent, CGEventTapLocation};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use core_graphics::geometry::{CGPoint, CGRect};
 use foreign_types_shared::ForeignType;
+use log::{debug, error, info, warn};
 use std::thread;
 use std::time::Duration;
 
@@ -304,12 +305,12 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
         for i in 0..display_count {
             let entry_ref = CFArrayGetValueAtIndex(managed_spaces, i);
             if entry_ref.is_null() {
-                println!("Skipping null entry at index {}", i);
+                debug!("Skipping null entry at index {}", i);
                 continue;
             }
 
             let entry_dict = entry_ref as CFDictionaryRef;
-            print_full_dictionary(entry_dict);
+            debug!("Processing display entry {}", i);
 
             // First, check if this entry is for our target display
             // let display_key_cstr = std::ffi::CString::new("Display").unwrap();
@@ -379,16 +380,16 @@ pub fn count_total_desktops() -> Result<u32, String> {
 /// Get current and total desktop counts for cursor's display
 pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
     let cursor_pos = get_cursor_position()?;
-    println!("Cursor position: {:?}", cursor_pos);
+    debug!("Cursor position: {:?}", cursor_pos);
     let display_id = find_display_at_point(cursor_pos)?;
-    println!("Display ID for cursor: {}", display_id);
+    debug!("Display ID for cursor: {}", display_id);
     let current_desktop = get_desktop_for_display(display_id)?;
-    println!(
+    debug!(
         "Current desktop for display {}: {}",
         display_id, current_desktop
     );
     let total_desktops = count_desktops_for_display(display_id)?;
-    println!(
+    debug!(
         "Total desktops for display {}: {}",
         display_id, total_desktops
     );
@@ -440,7 +441,7 @@ pub fn activate_mission_control_thumbnails() -> Result<(), String> {
         let width = CGDisplayPixelsWide(main_disp);
         let height = CGDisplayPixelsHigh(main_disp);
 
-        println!(
+        debug!(
             "Moving mouse to top edge: width={}, height={}",
             width, height
         );
