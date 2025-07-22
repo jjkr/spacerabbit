@@ -61,5 +61,13 @@
         <string>com.apple.HIToolbox</string>
         <string>com.apple.universalaccess</string>
     </array>
+
+    <key>com.apple.security.app-sandbox</key>
+    <false/> <!-- You can’t sandbox if you’re calling private CGS APIs -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>  <!-- Allows loading private frameworks like CGS* -->
+    <key>com.apple.security.accessibility</key>
+    <true/>  <!-- For AX and event injection APIs -->
+    
 </dict>
 </plist>
