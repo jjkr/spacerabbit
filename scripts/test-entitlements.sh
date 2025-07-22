@@ -80,6 +80,10 @@ if [ -n "$ENTITLEMENTS" ]; then
         "com.apple.security.cs.allow-unsigned-executable-memory"
         "com.apple.security.cs.disable-library-validation"
         "com.apple.security.cs.allow-jit"
+        "com.apple.security.device.input-monitoring"
+        "com.apple.security.device.screen-recording"
+        "com.apple.security.cs.disable-executable-page-protection"
+        "com.apple.security.temporary-exception.mach-lookup.global-name"
     )
     
     for entitlement in "${REQUIRED_ENTITLEMENTS[@]}"; do
