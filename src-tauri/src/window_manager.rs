@@ -22,7 +22,7 @@ extern "C" {
     // Window list functions
     fn CGWindowListCopyWindowInfo(option: u32, relative_to_window: CGWindowID) -> CFArrayRef;
     fn CGSMainConnectionID() -> CGSConnectionID;
-    
+
     // Window manipulation functions
     fn CGSGetWindowOwner(cid: CGSConnectionID, window_id: CGWindowID, owner_pid: *mut i32) -> i32;
     fn CGSSetWindowLevel(cid: CGSConnectionID, window_id: CGWindowID, level: i32) -> i32;
@@ -49,16 +49,16 @@ type pid_t = i32;
 extern "C" {
     // Accessibility permission
     fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> bool;
-    
+
     // UI Element creation
     fn AXUIElementCreateSystemWide() -> AXUIElementRef;
     fn AXUIElementCreateApplication(pid: pid_t) -> AXUIElementRef;
-    
+
     // Attribute access
     fn AXUIElementCopyAttributeValue(element: AXUIElementRef, attribute: CFStringRef, value: *mut CFTypeRef) -> AXError;
     fn AXUIElementSetAttributeValue(element: AXUIElementRef, attribute: CFStringRef, value: CFTypeRef) -> AXError;
     fn AXUIElementCopyAttributeNames(element: AXUIElementRef, value: *mut CFArrayRef) -> AXError;
-    
+
     // Actions
     fn AXUIElementPerformAction(element: AXUIElementRef, action: CFStringRef) -> AXError;
 }
@@ -112,7 +112,7 @@ fn check_accessibility_permission() -> Result<(), String> {
         let prompt_key = create_cfstring(AX_TRUSTED_CHECK_OPTION_PROMPT);
         let keys = [prompt_key as *const std::ffi::c_void];
         let values = [kCFBooleanTrue as *const std::ffi::c_void];
-        
+
         let options = CFDictionaryCreate(
             ptr::null(),
             keys.as_ptr(),
@@ -121,15 +121,15 @@ fn check_accessibility_permission() -> Result<(), String> {
             &kCFTypeDictionaryKeyCallBacks,
             &kCFTypeDictionaryValueCallBacks,
         );
-        
+
         let is_trusted = AXIsProcessTrustedWithOptions(options);
         CFRelease(options as CFTypeRef);
         CFRelease(prompt_key as CFTypeRef);
-        
+
         if !is_trusted {
             return Err("Accessibility permission required".to_string());
         }
-        
+
         Ok(())
     }
 }
@@ -139,10 +139,10 @@ fn get_ax_window_title(window: AXUIElementRef) -> String {
     unsafe {
         let attr_name = create_cfstring(AX_TITLE_ATTRIBUTE);
         let mut value: CFTypeRef = ptr::null_mut();
-        
+
         let result = AXUIElementCopyAttributeValue(window, attr_name, &mut value);
         CFRelease(attr_name as CFTypeRef);
-        
+
         if result == kAXErrorSuccess && !value.is_null() {
             let title = cfstring_to_string(value as CFStringRef);
             CFRelease(value);
@@ -161,60 +161,60 @@ fn get_ax_window_bounds(window: AXUIElementRef) -> (f64, f64, f64, f64) {
         let mut frame_value: CFTypeRef = ptr::null_mut();
         let frame_result = AXUIElementCopyAttributeValue(window, frame_attr, &mut frame_value);
         CFRelease(frame_attr as CFTypeRef);
-        
+
         if frame_result == kAXErrorSuccess && !frame_value.is_null() {
             // AXFrame should be a CGRect structure, but let's be careful about accessing it
             println!("DEBUG: Successfully got AXFrame value");
-            
+
             // Check if it's actually a dictionary before treating it as one
             let type_id = CFGetTypeID(frame_value);
             println!("DEBUG: AXFrame value TypeID: {}", type_id);
-            
+
             // For now, just release and fall back to position/size approach
             CFRelease(frame_value);
         } else {
             println!("DEBUG: Failed to get AXFrame (result: {})", frame_result);
         }
-        
+
         // Use AXPosition + AXSize approach (safer)
         let pos_attr = create_cfstring(AX_POSITION_ATTRIBUTE);
         let size_attr = create_cfstring(AX_SIZE_ATTRIBUTE);
         let mut pos_value: CFTypeRef = ptr::null_mut();
         let mut size_value: CFTypeRef = ptr::null_mut();
-        
+
         let pos_result = AXUIElementCopyAttributeValue(window, pos_attr, &mut pos_value);
         let size_result = AXUIElementCopyAttributeValue(window, size_attr, &mut size_value);
-        
+
         CFRelease(pos_attr as CFTypeRef);
         CFRelease(size_attr as CFTypeRef);
-        
+
         let mut x = 0.0;
         let mut y = 0.0;
         let mut width = 0.0;
         let mut height = 0.0;
-        
+
         if pos_result == kAXErrorSuccess && !pos_value.is_null() {
             println!("DEBUG: Successfully got AXPosition value");
             let type_id = CFGetTypeID(pos_value);
             println!("DEBUG: AXPosition value TypeID: {}", type_id);
-            
+
             // For now, just use default values and release
             CFRelease(pos_value);
         } else {
             println!("DEBUG: Failed to get AXPosition (result: {})", pos_result);
         }
-        
+
         if size_result == kAXErrorSuccess && !size_value.is_null() {
             println!("DEBUG: Successfully got AXSize value");
             let type_id = CFGetTypeID(size_value);
             println!("DEBUG: AXSize value TypeID: {}", type_id);
-            
+
             // For now, just use default values and release
             CFRelease(size_value);
         } else {
             println!("DEBUG: Failed to get AXSize (result: {})", size_result);
         }
-        
+
         println!("DEBUG: Returning bounds: ({}, {}, {}, {})", x, y, width, height);
         (x, y, width, height)
     }
@@ -228,14 +228,14 @@ fn match_ax_window_to_cg_window(
     ax_index: usize,
 ) -> bool {
     println!("DEBUG: Matching AX window {} against CG window", ax_index);
-    
+
     // Get AX window properties
     let ax_title = get_ax_window_title(ax_window);
     let ax_bounds = get_ax_window_bounds(ax_window);
-    
+
     println!("DEBUG: AX window {}: title='{}', bounds={:?}", ax_index, ax_title, ax_bounds);
     println!("DEBUG: Target CG window: title='{}', bounds={:?}", target_cg_title, target_cg_bounds);
-    
+
     // Strategy 1: Title matching (if both have non-empty titles)
     if !ax_title.is_empty() && !target_cg_title.is_empty() {
         if ax_title == target_cg_title {
@@ -247,24 +247,24 @@ fn match_ax_window_to_cg_window(
     } else {
         println!("DEBUG: Skipping title match (one or both titles empty)");
     }
-    
+
     // Strategy 2: Bounds matching (with tolerance for slight differences)
     let tolerance = 5.0; // Allow 5 pixel difference
     let x_match = (ax_bounds.0 - target_cg_bounds.0).abs() <= tolerance;
     let y_match = (ax_bounds.1 - target_cg_bounds.1).abs() <= tolerance;
     let w_match = (ax_bounds.2 - target_cg_bounds.2).abs() <= tolerance;
     let h_match = (ax_bounds.3 - target_cg_bounds.3).abs() <= tolerance;
-    
+
     if x_match && y_match && w_match && h_match {
         println!("DEBUG: MATCH: Bounds match within tolerance of {} pixels", tolerance);
         return true;
     } else {
         println!("DEBUG: Bounds mismatch - x:{}, y:{}, w:{}, h:{}", x_match, y_match, w_match, h_match);
     }
-    
+
     // Strategy 3: For single-window applications, just match if it's the only window
     // This will be handled by the caller
-    
+
     false
 }
 
@@ -273,28 +273,28 @@ fn get_ax_window_number(window: AXUIElementRef) -> Result<i32, String> {
     println!("DEBUG: get_ax_window_number: Starting for window at address {:p}", window);
     println!("DEBUG: WARNING: AXWindowNumber attribute does not exist on AX windows!");
     println!("DEBUG: This function is deprecated and will always fail.");
-    
+
     unsafe {
         let attr_name = create_cfstring(AX_WINDOW_NUMBER_ATTRIBUTE);
         let mut value: CFTypeRef = ptr::null_mut();
-        
+
         println!("DEBUG: get_ax_window_number: Calling AXUIElementCopyAttributeValue for attribute '{}'", AX_WINDOW_NUMBER_ATTRIBUTE);
         let result = AXUIElementCopyAttributeValue(window, attr_name, &mut value);
         CFRelease(attr_name as CFTypeRef);
-        
+
         println!("DEBUG: get_ax_window_number: AXUIElementCopyAttributeValue result: {}", result);
         if result != kAXErrorSuccess {
             let error_msg = format!("AXUIElementCopyAttributeValue failed with error: {} (EXPECTED - AXWindowNumber doesn't exist)", result);
             println!("DEBUG: get_ax_window_number: {}", error_msg);
             return Err(error_msg);
         }
-        
+
         // This code should never be reached since AXWindowNumber doesn't exist
         println!("DEBUG: get_ax_window_number: Unexpected success - this shouldn't happen!");
         if !value.is_null() {
             CFRelease(value);
         }
-        
+
         Err("AXWindowNumber attribute does not exist".to_string())
     }
 }
@@ -311,24 +311,24 @@ fn get_visible_window_numbers() -> Result<Vec<i32>, String> {
             kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
             0, // kCGNullWindowID
         );
-        
+
         if window_list.is_null() {
             println!("DEBUG: Failed to get window list from CGWindowListCopyWindowInfo");
             return Err("Failed to get window list".to_string());
         }
-        
+
         let window_count = CFArrayGetCount(window_list);
         println!("DEBUG: Found {} total windows in list", window_count);
         let mut window_numbers = Vec::new();
-        
+
         for i in 0..window_count {
             let window_dict_ref = CFArrayGetValueAtIndex(window_list, i);
             if !window_dict_ref.is_null() {
                 let window_dict = window_dict_ref as CFDictionaryRef;
-                
+
                 // Print full dictionary for debugging
                 print_full_dictionary(window_dict);
-                
+
                 // Get window info for debugging
                 let window_number = get_dict_number(window_dict, CG_WINDOW_NUMBER);
                 let layer = get_dict_number(window_dict, CG_WINDOW_LAYER);
@@ -345,22 +345,22 @@ fn get_visible_window_numbers() -> Result<Vec<i32>, String> {
                     println!("DEBUG: Skipping window {} (layer {})", window_number, layer);
                     continue;
                 }
-                
+
                 // Extract the window number
                 window_numbers.push(window_number);
                 println!("DEBUG: Added layer-0 window {} to list", window_number);
             }
         }
-        
+
         CFRelease(window_list as CFTypeRef);
-        
+
         println!("DEBUG: Final visible window numbers: {:?}", window_numbers);
-        
+
         if window_numbers.is_empty() {
             println!("DEBUG: No visible layer-0 windows found");
             return Err("No visible windows found".to_string());
         }
-        
+
         Ok(window_numbers)
     }
 }
@@ -374,26 +374,26 @@ fn get_focused_window_number() -> Result<i32, String> {
             println!("DEBUG: Failed to create system-wide element");
             return Err("Failed to create system-wide element".to_string());
         }
-        
+
         // DEBUG: Print all properties of sys_wide
         println!("DEBUG: ========== sys_wide element properties ==========");
         println!("DEBUG: sys_wide element address: {:p}", sys_wide);
-        
+
         // First check accessibility permission status
         let accessibility_check = check_accessibility_permission();
         match &accessibility_check {
             Ok(_) => println!("DEBUG: Accessibility permission check: GRANTED"),
             Err(e) => println!("DEBUG: Accessibility permission check: FAILED - {}", e),
         }
-        
+
         // Get all available attributes for sys_wide
         let mut attribute_names: CFTypeRef = ptr::null_mut();
         let attr_names_attr = create_cfstring("AXAttributeNames");
         let attr_result = AXUIElementCopyAttributeValue(sys_wide, attr_names_attr, &mut attribute_names);
         CFRelease(attr_names_attr as CFTypeRef);
-        
+
         println!("DEBUG: AXUIElementCopyAttributeValue for AXAttributeNames result: {}", attr_result);
-        
+
         // Decode the error code
         let error_description = match attr_result {
             0 => "kAXErrorSuccess",
@@ -409,28 +409,28 @@ fn get_focused_window_number() -> Result<i32, String> {
             _ => "Unknown error code",
         };
         println!("DEBUG: Error code {} means: {}", attr_result, error_description);
-        
+
         if attr_result == kAXErrorSuccess && !attribute_names.is_null() {
             let attr_count = CFArrayGetCount(attribute_names as CFArrayRef);
             println!("DEBUG: sys_wide has {} attributes:", attr_count);
-            
+
             for j in 0..attr_count {
                 let attr_name_ref = CFArrayGetValueAtIndex(attribute_names as CFArrayRef, j);
                 if !attr_name_ref.is_null() {
                     let attr_name = cfstring_to_string(attr_name_ref as CFStringRef);
                     println!("DEBUG:   - {}", attr_name);
-                    
+
                     // Try to get the value of each attribute for debugging
                     let attr_cfstr = create_cfstring(&attr_name);
                     let mut attr_value: CFTypeRef = ptr::null_mut();
                     let value_result = AXUIElementCopyAttributeValue(sys_wide, attr_cfstr, &mut attr_value);
                     CFRelease(attr_cfstr as CFTypeRef);
-                    
+
                     if value_result == kAXErrorSuccess && !attr_value.is_null() {
                         let type_id = CFGetTypeID(attr_value);
                         let string_type_id = CFStringGetTypeID();
                         let number_type_id = CFNumberGetTypeID();
-                        
+
                         let type_name = if type_id == string_type_id {
                             "CFString"
                         } else if type_id == number_type_id {
@@ -438,13 +438,13 @@ fn get_focused_window_number() -> Result<i32, String> {
                         } else {
                             "Unknown"
                         };
-                        
+
                         println!("DEBUG:     Value TypeID: {} ({})", type_id, type_name);
-                        
+
                         // Show the actual value using CFShow
                         print!("DEBUG:     Value: ");
                         CFShow(attr_value);
-                        
+
                         CFRelease(attr_value);
                     } else {
                         let value_error_desc = match value_result {
@@ -474,14 +474,14 @@ fn get_focused_window_number() -> Result<i32, String> {
                 println!("DEBUG: and make sure your application is listed and enabled.");
             }
         }
-        
+
         // Try to directly access the focused application attribute anyway
         println!("DEBUG: Attempting direct access to AXFocusedApplication attribute...");
         let focused_app_attr = create_cfstring(AX_FOCUSED_APPLICATION_ATTRIBUTE);
         let mut focused_app_test: CFTypeRef = ptr::null_mut();
         let direct_result = AXUIElementCopyAttributeValue(sys_wide, focused_app_attr, &mut focused_app_test);
         CFRelease(focused_app_attr as CFTypeRef);
-        
+
         let direct_error_desc = match direct_result {
             0 => "kAXErrorSuccess",
             -25200 => "kAXErrorFailure",
@@ -496,7 +496,7 @@ fn get_focused_window_number() -> Result<i32, String> {
             _ => "Unknown error code",
         };
         println!("DEBUG: Direct AXFocusedApplication access result: {} ({})", direct_result, direct_error_desc);
-        
+
         if direct_result == kAXErrorSuccess && !focused_app_test.is_null() {
             println!("DEBUG: Successfully got focused application directly!");
             CFRelease(focused_app_test);
