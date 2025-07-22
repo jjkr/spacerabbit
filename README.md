@@ -82,6 +82,34 @@ Write a new icon to `src-tauri/icons/OriginalLogo.png` then run:
 npm run tauri -- icon src-tauri/icons/OriginalLogo.png
 ```
 
+## Troubleshooting
+
+### Hotkeys Don't Work in Distributed Builds
+
+If hotkeys work when building locally but not when installing from GitHub releases, this is likely an entitlements issue. The app now includes proper entitlements for distribution:
+
+- `entitlements.plist` - Development entitlements (more permissive)
+- `entitlements.release.plist` - Production entitlements (minimal required permissions)
+
+To test your build with production entitlements locally:
+
+```bash
+# Test with release entitlements
+npm run tauri:build -- --config '{"bundle":{"macOS":{"entitlements":"entitlements.release.plist"}}}'
+
+# Verify entitlements are applied
+./scripts/test-entitlements.sh
+```
+
+### Required Permissions
+
+The app requires these macOS permissions:
+- **Accessibility**: For global hotkeys and workspace switching
+- **Input Monitoring**: For detecting keyboard shortcuts
+
+Grant these in System Preferences > Security & Privacy > Privacy when prompted.
+
 ## Notes
 
 - The app requires macOS accessibility permissions to register global hotkeys
+- Entitlements are automatically applied in CI builds for proper distribution

@@ -121,12 +121,40 @@ npm run tauri:build
 npm run tauri:build -- --target universal-apple-darwin
 ```
 
+## Entitlements and Permissions
+
+QuickSpace requires specific macOS entitlements to function properly when distributed:
+
+### Required Entitlements
+- `com.apple.security.automation.apple-events` - For accessibility features and workspace switching
+- `com.apple.security.device.audio-input` - For input monitoring and global hotkey detection
+- `com.apple.security.cs.allow-unsigned-executable-memory` - For Core Graphics private APIs
+- `com.apple.security.cs.disable-library-validation` - For native libraries like global-hotkey
+- `com.apple.security.cs.allow-jit` - For Rust runtime optimizations
+- `com.apple.security.cs.allow-dyld-environment-variables` - Required for hardened runtime
+
+### Entitlements Files
+- `entitlements.plist` - Development entitlements (more permissive)
+- `entitlements.release.plist` - Production entitlements (minimal required permissions)
+
+The CI workflow automatically uses the release entitlements for distribution builds.
+
 ## Security Considerations
 
 - **Never commit certificates or passwords** to your repository
 - **Use GitHub Secrets** for all sensitive information
 - **Rotate app-specific passwords** regularly
 - **Monitor your repository** for unauthorized access
+- **Entitlements are embedded** in the signed binary and cannot be modified after signing
+
+## Troubleshooting Hotkey Issues
+
+If hotkeys don't work in distributed builds:
+
+1. **Check entitlements**: Verify the app was signed with proper entitlements
+2. **Verify permissions**: Ensure Accessibility and Input Monitoring are granted
+3. **Check signing**: Use `codesign -d --entitlements - /path/to/app` to verify entitlements
+4. **Test locally**: Build with `--config '{"bundle":{"macOS":{"entitlements":"entitlements.release.plist"}}}'`
 
 ## Next Steps
 

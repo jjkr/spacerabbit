@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Essential for global hotkeys and accessibility features -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    
+    <!-- Required for input monitoring and global hotkey detection -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    
+    <!-- Allow unsigned executable memory for Core Graphics private APIs -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    
+    <!-- Disable library validation for global-hotkey and other native libraries -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    
+    <!-- Allow JIT for Rust runtime optimizations -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    
+    <!-- Required for hardened runtime with private API usage -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    
+    <!-- Network client access (minimal, for future updates) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+    
+    <!-- Inherit entitlements (important for proper signing) -->
+    <key>com.apple.security.inherit</key>
+    <true/>
+</dict>
+</plist>
