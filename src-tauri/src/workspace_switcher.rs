@@ -1,14 +1,16 @@
-
-use crate::cf_utils::{create_cfstring, cfstring_to_string, get_dict_string, get_dict_number, get_dict_bounds, print_full_dictionary};
+use crate::cf_utils::{
+    cfstring_to_string, create_cfstring, get_dict_bounds, get_dict_number, get_dict_string,
+    print_full_dictionary,
+};
+use core_foundation::array::{CFArrayGetCount, CFArrayGetValueAtIndex, CFArrayRef};
+use core_foundation::base::{CFRelease, CFTypeRef};
+use core_foundation::dictionary::CFDictionaryRef;
+use core_foundation::number::{kCFNumberSInt64Type, CFNumberGetValue, CFNumberRef};
+use core_foundation::string::{kCFStringEncodingUTF8, CFStringRef};
+use core_graphics::display::{CGDirectDisplayID, CGDisplayPixelsHigh, CGDisplayPixelsWide};
 use core_graphics::event::{CGEvent, CGEventTapLocation};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use core_graphics::geometry::{CGPoint, CGRect};
-use core_graphics::display::{CGDirectDisplayID, CGDisplayPixelsWide, CGDisplayPixelsHigh};
-use core_foundation::array::{CFArrayRef, CFArrayGetCount, CFArrayGetValueAtIndex};
-use core_foundation::base::{CFTypeRef, CFRelease};
-use core_foundation::number::{CFNumberRef, CFNumberGetValue, kCFNumberSInt64Type};
-use core_foundation::dictionary::CFDictionaryRef;
-use core_foundation::string::{CFStringRef, kCFStringEncodingUTF8};
 use foreign_types_shared::ForeignType;
 use std::thread;
 use std::time::Duration;
@@ -22,11 +24,14 @@ type CGEventRef = *mut std::ffi::c_void;
 
 #[link(name = "CoreGraphics", kind = "framework")]
 extern "C" {
-    fn CFDictionaryGetValue(theDict: CFDictionaryRef, key: *const std::ffi::c_void) -> *const std::ffi::c_void;
+    fn CFDictionaryGetValue(
+        theDict: CFDictionaryRef,
+        key: *const std::ffi::c_void,
+    ) -> *const std::ffi::c_void;
     fn CFStringCreateWithCString(
         alloc: *const std::ffi::c_void,
         cStr: *const std::ffi::c_char,
-        encoding: u32
+        encoding: u32,
     ) -> CFStringRef;
 
     fn CGSMainConnectionID() -> CGSConnectionID;
@@ -34,21 +39,26 @@ extern "C" {
     fn CGEventSetIntegerValueField(event: CGEventRef, field: u32, value: i64);
     fn CGEventSetDoubleValueField(event: CGEventRef, field: u32, value: f64);
 
-    fn CGGetDisplaysWithPoint(point: CGPoint, max_displays: u32, displays: *mut u32, display_count: *mut u32) -> i32;
+    fn CGGetDisplaysWithPoint(
+        point: CGPoint,
+        max_displays: u32,
+        displays: *mut u32,
+        display_count: *mut u32,
+    ) -> i32;
     fn CGMainDisplayID() -> u32;
     fn CGSGetActiveSpace(cid: CGSConnectionID, display_id: u32) -> u64;
     fn CGDisplayBounds(display: u32) -> CGRect;
-    
+
     // Mouse event functions
     fn CGEventCreateMouseEvent(
         source: *const std::ffi::c_void,
         mouseType: u32,
         mouseCursorPosition: CGPoint,
-        mouseButton: u32
+        mouseButton: u32,
     ) -> CGEventRef;
     fn CGEventPost(tap: u32, event: CGEventRef);
     fn CGWarpMouseCursorPosition(newCursorPosition: CGPoint) -> i32;
-    
+
     // Cursor position functions
     fn CGEventCreate(source: *const std::ffi::c_void) -> CGEventRef;
     fn CGEventGetLocation(event: CGEventRef) -> CGPoint;
@@ -184,11 +194,12 @@ pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
             let spaces_key_cfstr = CFStringCreateWithCString(
                 std::ptr::null(),
                 spaces_key_cstr.as_ptr(),
-                kCFStringEncodingUTF8
+                kCFStringEncodingUTF8,
             );
 
             // Try to get the spaces array from the dictionary
-            let spaces_array_ref = CFDictionaryGetValue(entry_dict, spaces_key_cfstr as *const std::ffi::c_void);
+            let spaces_array_ref =
+                CFDictionaryGetValue(entry_dict, spaces_key_cfstr as *const std::ffi::c_void);
             CFRelease(spaces_key_cfstr as CFTypeRef);
 
             if !spaces_array_ref.is_null() {
@@ -213,10 +224,13 @@ pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
                         let space_id_key_cfstr = CFStringCreateWithCString(
                             std::ptr::null(),
                             space_id_key_cstr.as_ptr(),
-                            kCFStringEncodingUTF8
+                            kCFStringEncodingUTF8,
                         );
 
-                        let space_id_value_ref = CFDictionaryGetValue(space_dict, space_id_key_cfstr as *const std::ffi::c_void);
+                        let space_id_value_ref = CFDictionaryGetValue(
+                            space_dict,
+                            space_id_key_cfstr as *const std::ffi::c_void,
+                        );
                         CFRelease(space_id_key_cfstr as CFTypeRef);
 
                         if !space_id_value_ref.is_null() {
@@ -224,10 +238,13 @@ pub fn get_ordered_desktop_spaces(display_id: u32) -> Result<u32, String> {
                             let success = CFNumberGetValue(
                                 space_id_value_ref as CFNumberRef,
                                 kCFNumberSInt64Type,
-                                &mut space_id_value as *mut i64 as *mut std::ffi::c_void
+                                &mut space_id_value as *mut i64 as *mut std::ffi::c_void,
                             );
 
-                            if success && space_id_value > 0 && space_id_value as u64 == current_space_id {
+                            if success
+                                && space_id_value > 0
+                                && space_id_value as u64 == current_space_id
+                            {
                                 let desktop_num = j + 1; // 1-based desktop numbers
                                 CFRelease(managed_spaces as CFTypeRef);
                                 return Ok(desktop_num as u32);
@@ -276,7 +293,7 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
     unsafe {
         let connection_id = CGSMainConnectionID();
         let managed_spaces = CGSCopyManagedDisplaySpaces(connection_id);
-        
+
         if managed_spaces.is_null() {
             return Err("Failed to get managed display spaces".to_string());
         }
@@ -325,11 +342,12 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
             let spaces_key_cfstr = CFStringCreateWithCString(
                 std::ptr::null(),
                 spaces_key_cstr.as_ptr(),
-                kCFStringEncodingUTF8
+                kCFStringEncodingUTF8,
             );
 
             // Get spaces array from dictionary
-            let spaces_array_ref = CFDictionaryGetValue(entry_dict, spaces_key_cfstr as *const std::ffi::c_void);
+            let spaces_array_ref =
+                CFDictionaryGetValue(entry_dict, spaces_key_cfstr as *const std::ffi::c_void);
             CFRelease(spaces_key_cfstr as CFTypeRef);
 
             if !spaces_array_ref.is_null() {
@@ -342,7 +360,7 @@ pub fn count_desktops_for_display(display_id: u32) -> Result<u32, String> {
                     }
                 }
             }
-                //}
+            //}
             //}
         }
 
@@ -365,9 +383,15 @@ pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
     let display_id = find_display_at_point(cursor_pos)?;
     println!("Display ID for cursor: {}", display_id);
     let current_desktop = get_desktop_for_display(display_id)?;
-    println!("Current desktop for display {}: {}", display_id, current_desktop);
+    println!(
+        "Current desktop for display {}: {}",
+        display_id, current_desktop
+    );
     let total_desktops = count_desktops_for_display(display_id)?;
-    println!("Total desktops for display {}: {}", display_id, total_desktops);
+    println!(
+        "Total desktops for display {}: {}",
+        display_id, total_desktops
+    );
     Ok((current_desktop, total_desktops))
 }
 
@@ -376,45 +400,50 @@ pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
 // =============================================================================
 
 /// Move mouse cursor to specified coordinates using CGWarpMouseCursorPosition
-/// 
+///
 /// This function provides instant mouse teleportation to the target position.
 /// Uses the most direct Core Graphics API for cursor positioning.
-/// 
+///
 /// # Arguments
 /// * `x` - Target X coordinate in global screen coordinates
 /// * `y` - Target Y coordinate in global screen coordinates
-/// 
+///
 /// # Returns
 /// * `Ok(())` on success, or an error message if the operation failed
 pub fn move_mouse_to_position(x: f64, y: f64) -> Result<(), String> {
     let target_point = CGPoint::new(x, y);
-    
+
     unsafe {
         let result = CGWarpMouseCursorPosition(target_point);
         if result == 0 {
             Ok(())
         } else {
-            Err(format!("Failed to move mouse cursor: CGWarpMouseCursorPosition returned {}", result))
+            Err(format!(
+                "Failed to move mouse cursor: CGWarpMouseCursorPosition returned {}",
+                result
+            ))
         }
     }
 }
 
 /// Move mouse to the top edge of the current display to trigger desktop thumbnails
-/// 
+///
 /// This function determines the current display bounds and moves the mouse to a position
 /// near the top edge that will trigger macOS to show desktop thumbnails in Mission Control.
-/// 
+///
 /// # Returns
 /// * `Ok(original_position)` with the mouse's original position, or an error message
 pub fn activate_mission_control_thumbnails() -> Result<(), String> {
-    
     unsafe {
         // Compute a point along the very top of the main screen
         let main_disp: CGDirectDisplayID = CGMainDisplayID();
-        let width  = CGDisplayPixelsWide(main_disp);
+        let width = CGDisplayPixelsWide(main_disp);
         let height = CGDisplayPixelsHigh(main_disp);
-        
-        println!("Moving mouse to top edge: width={}, height={}", width, height);
+
+        println!(
+            "Moving mouse to top edge: width={}, height={}",
+            width, height
+        );
 
         // Shake the mouse
         for i in 0..3 {
@@ -431,8 +460,6 @@ pub fn activate_mission_control_thumbnails() -> Result<(), String> {
 
             move_mouse_to_position(width as f64, TOP_EDGE_OFFSET + (i % 2) as f64 * 10.0)?;
         }
-        
-
 
         // Top‐center, just below the menu bar (y=height−1 is screen top)
         //let hover_point: CGPoint = CGPoint::new((width / 8) as f64, 20 as f64);
@@ -447,7 +474,6 @@ pub fn activate_mission_control_thumbnails() -> Result<(), String> {
         //CGEventPost(kCGHIDEventTap, move_evt);
         //CFRelease(move_evt);
 
-
         //// Middle point of screen
         //let middle_point: CGPoint = CGPoint::new((width / 2) as f64, (height / 2) as f64);
 
@@ -461,15 +487,15 @@ pub fn activate_mission_control_thumbnails() -> Result<(), String> {
         //CGEventPost(kCGHIDEventTap, center_mouse_evt);
         //CFRelease(center_mouse_evt);
     }
-    
+
     Ok(())
 }
 
 /// Restore mouse cursor to its original position
-/// 
+///
 /// # Arguments
 /// * `original_position` - The position to restore the cursor to
-/// 
+///
 /// # Returns
 /// * `Ok(())` on success, or an error message if the operation failed
 pub fn restore_mouse_position(original_position: CGPoint) -> Result<(), String> {
@@ -477,11 +503,11 @@ pub fn restore_mouse_position(original_position: CGPoint) -> Result<(), String> 
 }
 
 /// Create and send a synthetic gesture event for workspace switching
-/// 
+///
 /// Generates CGEvents that mimic a 3-finger horizontal swipe gesture.
-/// This bypasses the need for actual touch input by directly posting the 
+/// This bypasses the need for actual touch input by directly posting the
 /// essential gesture event fields that macOS recognizes for workspace switching.
-/// 
+///
 /// # Arguments:
 /// * `event_source` - The CGEventSource to use for creating the event.
 /// * `gesture_phase` - The phase of the gesture (1 for begin, 2 for update, 4 for end/snap).
@@ -495,18 +521,18 @@ fn send_gesture_event(
     event_source: &CGEventSource,
     gesture_phase: i64,
     gesture_type: i64,
-    positive_direction: bool
+    positive_direction: bool,
 ) -> Result<(), String> {
     // Create gesture phase event and tracking event
-    let phase_event = CGEvent::new(event_source.clone())
-        .map_err(|_| "Failed to create phase event")?;
+    let phase_event =
+        CGEvent::new(event_source.clone()).map_err(|_| "Failed to create phase event")?;
 
     // Calculate movement values
     let delta_sign = if positive_direction { 1.0 } else { -1.0 };
 
     unsafe {
         // === PHASE EVENT: Gesture Phase Transition ===
-        
+
         // Field 0x37 (55): Event type - 0x1e (30) for gesture phase transition
         CGEventSetIntegerValueField(phase_event.as_ptr() as CGEventRef, 0x37, 0x1e);
         // Field 0x6e (110): Gesture subtype - 0x17 (23) for horizontal swipe gesture
@@ -529,12 +555,24 @@ fn send_gesture_event(
             // Field 0x7c (124): Movement delta as double
             CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 1.0 * delta_sign);
             // Field 0x81 (129): Final position, set to a large number for fast transition
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x81, 9100.0 * delta_sign);
+            CGEventSetDoubleValueField(
+                phase_event.as_ptr() as CGEventRef,
+                0x81,
+                9100.0 * delta_sign,
+            );
             // Field 0x82 (130): Final position copy
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x82, 9100.0 * delta_sign);
+            CGEventSetDoubleValueField(
+                phase_event.as_ptr() as CGEventRef,
+                0x82,
+                9100.0 * delta_sign,
+            );
         } else {
             // Field 0x7c (124): Movement delta as double
-            CGEventSetDoubleValueField(phase_event.as_ptr() as CGEventRef, 0x7c, 0.000001 * delta_sign);
+            CGEventSetDoubleValueField(
+                phase_event.as_ptr() as CGEventRef,
+                0x7c,
+                0.000001 * delta_sign,
+            );
         }
     }
 
@@ -563,7 +601,7 @@ pub fn activate_mission_control() -> Result<(), String> {
             std::ptr::null(), // No event source, use system default
             kCGEventMouseMoved,
             top_point,
-            kCGMouseButtonLeft
+            kCGMouseButtonLeft,
         );
         CGEventPost(kCGHIDEventTap, move_evt);
         CFRelease(move_evt);
@@ -585,7 +623,7 @@ pub fn activate_mission_control() -> Result<(), String> {
 }
 
 /// Activate Mission Control with desktop thumbnails (same as activate_mission_control)
-/// 
+///
 /// This is an alias for the enhanced activate_mission_control function that includes
 /// automatic mouse movement to trigger desktop thumbnails.
 pub fn activate_mission_control_with_thumbnails() -> Result<(), String> {
@@ -593,7 +631,7 @@ pub fn activate_mission_control_with_thumbnails() -> Result<(), String> {
 }
 
 /// Activate Mission Control without desktop thumbnails (original behavior)
-/// 
+///
 /// This function provides the original Mission Control activation behavior
 /// without the mouse movement to trigger desktop thumbnails.
 pub fn activate_mission_control_basic() -> Result<(), String> {
@@ -625,7 +663,7 @@ pub fn deactivate_mission_control() -> Result<(), String> {
 // =============================================================================
 
 /// Switch to adjacent macOS workspace using synthetic gesture simulation
-/// 
+///
 /// Simulates a 3-finger horizontal swipe by posting synthetic CGEvents.
 /// 1. Begin gesture (phase 1) - initiates workspace transition animation
 /// 2. Update gesture (phase 2) - updates the gesture position
@@ -635,8 +673,8 @@ pub fn switch_to_adjacent_workspace(move_right: bool) -> Result<(), String> {
         .map_err(|_| "Failed to create CGEventSource")?;
 
     send_gesture_event(&event_source, 1, 1, move_right)?;
-    send_gesture_event(&event_source, 2,  1, move_right)?;
-    send_gesture_event(&event_source, 4,  1, move_right)?;
+    send_gesture_event(&event_source, 2, 1, move_right)?;
+    send_gesture_event(&event_source, 4, 1, move_right)?;
 
     Ok(())
 }

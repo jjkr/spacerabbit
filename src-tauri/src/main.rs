@@ -1,14 +1,17 @@
-use quickspace::workspace_switcher;
 use quickspace::window_manager;
+use quickspace::workspace_switcher;
 
-use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::{HotKey, Modifiers, Code}};
+use global_hotkey::{
+    hotkey::{Code, HotKey, Modifiers},
+    GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState,
+};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
-    Manager, AppHandle,
+    AppHandle, Manager,
 };
 
 // Shared state for tracking current desktop and display
@@ -41,16 +44,24 @@ fn main() {
     let manager = GlobalHotKeyManager::new().expect("Failed to create hotkey manager");
 
     // Create hotkeys: Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling)
-    let hotkey_left = HotKey::new(Some(Modifiers::ALT), Code::KeyH);   // Alt+H = left
-    let hotkey_right = HotKey::new(Some(Modifiers::ALT), Code::KeyL);  // Alt+L = right
+    let hotkey_left = HotKey::new(Some(Modifiers::ALT), Code::KeyH); // Alt+H = left
+    let hotkey_right = HotKey::new(Some(Modifiers::ALT), Code::KeyL); // Alt+L = right
     let hotkey_mission_control = HotKey::new(Some(Modifiers::ALT), Code::KeyE); // Alt+E = mission control
     let hotkey_window_cycle = HotKey::new(Some(Modifiers::ALT), Code::Tab); // Alt+Tab = window cycling
 
     // Register all hotkeys
-    manager.register(hotkey_left).expect("Failed to register Alt+H hotkey");
-    manager.register(hotkey_right).expect("Failed to register Alt+L hotkey");
-    manager.register(hotkey_mission_control).expect("Failed to register Alt+E hotkey");
-    manager.register(hotkey_window_cycle).expect("Failed to register Alt+Tab hotkey");
+    manager
+        .register(hotkey_left)
+        .expect("Failed to register Alt+H hotkey");
+    manager
+        .register(hotkey_right)
+        .expect("Failed to register Alt+L hotkey");
+    manager
+        .register(hotkey_mission_control)
+        .expect("Failed to register Alt+E hotkey");
+    manager
+        .register(hotkey_window_cycle)
+        .expect("Failed to register Alt+Tab hotkey");
     println!("Registered Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling) global hotkeys");
 
     let mut app = tauri::Builder::default()
@@ -70,30 +81,26 @@ fn main() {
             let _tray = TrayIconBuilder::with_id("main")
                 .menu(&menu)
                 .title(&initial_title)
-                .on_tray_icon_event(move |_tray, event| {
-                    match event {
-                        TrayIconEvent::Click { .. } => {
-                            println!("Tray icon clicked");
-                        }
-                        TrayIconEvent::DoubleClick { .. } => {
-                            println!("Tray icon double-clicked");
-                        }
-                        _ => {}
+                .on_tray_icon_event(move |_tray, event| match event {
+                    TrayIconEvent::Click { .. } => {
+                        println!("Tray icon clicked");
                     }
+                    TrayIconEvent::DoubleClick { .. } => {
+                        println!("Tray icon double-clicked");
+                    }
+                    _ => {}
                 })
-                .on_menu_event(move |app, event| {
-                    match event.id().as_ref() {
-                        "quit" => {
-                            println!("Quit menu item clicked - exiting");
-                            std::process::exit(0);
-                        }
-                        "hide" => {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let _ = window.hide();
-                            }
-                        }
-                        _ => {}
+                .on_menu_event(move |app, event| match event.id().as_ref() {
+                    "quit" => {
+                        println!("Quit menu item clicked - exiting");
+                        std::process::exit(0);
                     }
+                    "hide" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.hide();
+                        }
+                    }
+                    _ => {}
                 })
                 .build(app)?;
 
@@ -108,7 +115,15 @@ fn main() {
             let app_handle_hotkey = app_handle.clone();
             let state_hotkey = state.clone();
             thread::spawn(move || {
-                hotkey_listener_thread(app_handle_hotkey, state_hotkey, manager, hotkey_left, hotkey_right, hotkey_mission_control, hotkey_window_cycle);
+                hotkey_listener_thread(
+                    app_handle_hotkey,
+                    state_hotkey,
+                    manager,
+                    hotkey_left,
+                    hotkey_right,
+                    hotkey_mission_control,
+                    hotkey_window_cycle,
+                );
             });
 
             // Spawn cursor monitoring thread
@@ -157,7 +172,6 @@ fn hotkey_listener_thread(
         if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
             // Only trigger on key press, not release
             if event.state == HotKeyState::Pressed {
-
                 // Handle workspace switching based on which hotkey was pressed
                 match event.id {
                     id if id == hotkey_left.id() => {
@@ -168,7 +182,7 @@ fn hotkey_listener_thread(
                             thread::sleep(Duration::from_millis(100));
                             update_tray_text_for_current_context(&app_handle, &state);
                         }
-                    },
+                    }
                     id if id == hotkey_right.id() => {
                         if let Err(e) = workspace_switcher::switch_right() {
                             eprintln!("Failed to switch right: {}", e);
@@ -177,7 +191,7 @@ fn hotkey_listener_thread(
                             thread::sleep(Duration::from_millis(100));
                             update_tray_text_for_current_context(&app_handle, &state);
                         }
-                    },
+                    }
                     id if id == hotkey_mission_control.id() => {
                         // Toggle Mission Control state
                         let is_active = {
@@ -210,7 +224,7 @@ fn hotkey_listener_thread(
                                 println!("Mission Control activated");
                             }
                         }
-                    },
+                    }
                     id if id == hotkey_window_cycle.id() => {
                         // Cycle to next window on current workspace
                         if let Err(e) = window_manager::cycle_next_window() {
@@ -218,12 +232,11 @@ fn hotkey_listener_thread(
                         } else {
                             println!("Cycled to next window");
                         }
-                    },
+                    }
                     _ => {
                         println!("Unknown hotkey event: {:?}", event);
                     }
                 }
-
             }
         }
 
