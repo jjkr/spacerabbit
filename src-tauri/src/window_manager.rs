@@ -652,7 +652,14 @@ fn focus_window_by_number(target_window_number: i32) -> Result<(), String> {
         } else {
             // Strategy 2: Try to match using title and bounds
             println!("DEBUG: Multiple AX windows found, attempting to match by title/bounds");
-            
+
+            // Set the window title
+            let title_attr = create_cfstring(AX_TITLE_ATTRIBUTE);
+            let tmp_title = create_cfstring("TEST JJK");
+            let set_title_result = AXUIElementSetAttributeValue(app_element, title_attr, tmp_title as CFTypeRef);
+            CFRelease(tmp_title as CFTypeRef);
+            println!("DEBUG: Set window title result: {}", set_title_result);
+
             for i in 0..window_count {
                 let window = CFArrayGetValueAtIndex(app_windows as CFArrayRef, i) as AXUIElementRef;
                 println!("DEBUG: Examining AX window {} at address {:p}", i, window);

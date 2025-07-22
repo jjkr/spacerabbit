@@ -66,7 +66,7 @@ const POSITION_SCALE_FACTOR: f64 = 400.0;
 // Mouse movement constants
 const MISSION_CONTROL_ACTIVATION_DELAY_MS: u64 = 250;
 const DESKTOP_THUMBNAILS_TRIGGER_DELAY_MS: u64 = 100;
-const TOP_EDGE_OFFSET: f64 = 10.0; // Pixels from top edge to trigger desktop thumbnails
+const TOP_EDGE_OFFSET: f64 = 20.0; // Pixels from top edge to trigger desktop thumbnails
 
 // Core Graphics mouse event types
 const KCG_EVENT_MOUSE_MOVED: u32 = 5;
