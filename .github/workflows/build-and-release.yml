@@ -51,6 +51,7 @@ jobs:
               draft: true,
               prerelease: false
             });
+            core.setOutput('release_id', data.id);
             return data.id;
 
   build-universal:
