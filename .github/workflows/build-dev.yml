@@ -35,7 +35,7 @@ jobs:
         run: cd src-tauri && cargo test
 
       - name: Build app (unsigned for testing)
-        run: npm run tauri:build -- --target universal-apple-darwin
+        run: npm run tauri build -- --target universal-apple-darwin
         env:
           # Skip signing for development builds
           TAURI_SIGNING_PRIVATE_KEY: ""
