@@ -238,10 +238,7 @@ fn get_ax_window_bounds(window: AXUIElementRef) -> (f64, f64, f64, f64) {
             debug!("Failed to get AXSize (result: {})", size_result);
         }
 
-        debug!(
-            "Returning bounds: ({}, {}, {}, {})",
-            x, y, width, height
-        );
+        debug!("Returning bounds: ({}, {}, {}, {})", x, y, width, height);
         (x, y, width, height)
     }
 }
@@ -277,10 +274,7 @@ fn match_ax_window_to_cg_window(
             );
             return true;
         } else {
-            debug!(
-                "Title mismatch - '{}' != '{}'",
-                ax_title, target_cg_title
-            );
+            debug!("Title mismatch - '{}' != '{}'", ax_title, target_cg_title);
         }
     } else {
         debug!("Skipping title match (one or both titles empty)");
@@ -467,10 +461,7 @@ fn get_focused_window_number() -> Result<i32, String> {
             -25208 => "kAXErrorNotEnoughPrecision",
             _ => "Unknown error code",
         };
-        debug!(
-            "Error code {} means: {}",
-            attr_result, error_description
-        );
+        debug!("Error code {} means: {}", attr_result, error_description);
 
         if attr_result == kAXErrorSuccess && !attribute_names.is_null() {
             let attr_count = CFArrayGetCount(attribute_names as CFArrayRef);

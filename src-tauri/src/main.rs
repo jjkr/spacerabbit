@@ -82,7 +82,7 @@ fn main() {
         .setup(move |app| {
             info!("QuickSpace starting...");
             info!("Registered Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling) global hotkeys");
-            
+
             let app_handle = app.handle();
             let state = app_state.clone();
 
