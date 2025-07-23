@@ -6,8 +6,9 @@ use core_foundation::array::{CFArray, CFArrayGetCount, CFArrayGetValueAtIndex, C
 use core_foundation::base::{CFGetTypeID, CFRelease, CFShow, CFTypeRef};
 use core_foundation::boolean::{kCFBooleanTrue, CFBooleanRef};
 use core_foundation::dictionary::{
-    kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks, CFDictionaryGetTypeID, CFDictionaryCreate,
-    CFDictionaryGetCount, CFDictionaryGetKeysAndValues, CFDictionaryGetValue, CFDictionaryRef,
+    kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks, CFDictionaryCreate,
+    CFDictionaryGetCount, CFDictionaryGetKeysAndValues, CFDictionaryGetTypeID,
+    CFDictionaryGetValue, CFDictionaryRef,
 };
 use core_foundation::number::{
     kCFNumberIntType, kCFNumberSInt32Type, CFNumberGetTypeID, CFNumberGetValue, CFNumberRef,
@@ -193,14 +194,17 @@ fn get_ax_window_bounds(window: AXUIElementRef) -> (f64, f64, f64, f64) {
             let type_id = CFGetTypeID(frame_value);
             debug!("AXFrame value TypeID: {}", type_id);
             debug!("Dictionary TypeID: {}", CFDictionaryGetTypeID());
-            // If it's a dictionary, we can extract bounds from it  
+            // If it's a dictionary, we can extract bounds from it
             if type_id == CFDictionaryGetTypeID() {
                 let bounds_dict = frame_value as CFDictionaryRef;
                 let x = get_dict_number(bounds_dict, "X") as f64;
                 let y = get_dict_number(bounds_dict, "Y") as f64;
                 let width = get_dict_number(bounds_dict, "Width") as f64;
                 let height = get_dict_number(bounds_dict, "Height") as f64;
-                debug!("Returning bounds from AXFrame: ({}, {}, {}, {})", x, y, width, height);
+                debug!(
+                    "Returning bounds from AXFrame: ({}, {}, {}, {})",
+                    x, y, width, height
+                );
                 return (x, y, width, height);
             }
 

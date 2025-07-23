@@ -560,8 +560,8 @@ pub fn activate_mission_control() -> Result<(), String> {
             let window_rect = first_window.bounds;
             let center_x = window_rect.0 + window_rect.2 / 2.0;
             let center_y = window_rect.1 + window_rect.3 / 2.0 + 20.0; // Shift down so the pointer sits below the label
-            // Move mouse to the center of the first window
-            //move_mouse_to_position(center_x, center_y)?;
+                                                                       // Move mouse to the center of the first window
+                                                                       //move_mouse_to_position(center_x, center_y)?;
             unsafe {
                 let window_center = CGPoint::new(center_x, center_y);
                 // Create and post a "mouse moved" event (to focus top window)
