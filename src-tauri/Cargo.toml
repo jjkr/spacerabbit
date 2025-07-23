@@ -2,7 +2,7 @@
 name = "spacerabbit"
 version = "0.9.12"
 description = "Simple Tauri app with global hotkey support"
-authors = ["you"]
+authors = ["jjkr"]
 license = ""
 repository = ""
 edition = "2021"
