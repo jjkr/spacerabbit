@@ -29,7 +29,7 @@ Get the latest installer [HERE](https://github.com/jjkr/spacerabbit/releases/lat
 npm install
 
 # Run in development mode
-npm run tauri:dev
+npm run tauri dev
 ```
 
 ### Building
@@ -97,7 +97,7 @@ See [docs/ci-setup.md](docs/ci-setup.md) for detailed setup instructions.
 
 1. Run the app - it will start in the background with no visible window
 2. Look for the SpaceRabbit icon in your system tray
-3. Press Alt+L (Option+L) anywhere on your Mac to go to the next workspace instantly!
+3. Press Option+L anywhere on your Mac to go to the next workspace instantly!
 
 ## Replacing icons
 
@@ -108,23 +108,6 @@ npm run tauri -- icon src-tauri/icons/OriginalLogo.png
 ```
 
 ## Troubleshooting
-
-### Hotkeys Don't Work in Distributed Builds
-
-If hotkeys work when building locally but not when installing from GitHub releases, this is likely an entitlements issue. The app now includes proper entitlements for distribution:
-
-- `entitlements.plist` - Development entitlements (more permissive)
-- `entitlements.release.plist` - Production entitlements (minimal required permissions)
-
-To test your build with production entitlements locally:
-
-```bash
-# Test with release entitlements
-npm run tauri build -- --config '{"bundle":{"macOS":{"entitlements":"entitlements.release.plist"}}}'
-
-# Verify entitlements are applied
-./scripts/test-entitlements.sh
-```
 
 ### Required Permissions
 
