@@ -1,5 +1,5 @@
 {
-  "name": "quickspace",
+  "name": "spacerabbit",
   "version": "0.9.12",
   "description": "Fast keyboard workspace navigation for macOS",
   "main": "src/main.js",

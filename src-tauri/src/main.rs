@@ -1,5 +1,5 @@
-use quickspace::window_manager;
-use quickspace::workspace_switcher;
+use spacerabbit::window_manager;
+use spacerabbit::workspace_switcher;
 
 use global_hotkey::{
     hotkey::{Code, HotKey, Modifiers},
@@ -80,7 +80,7 @@ fn main() {
                 .build(),
         )
         .setup(move |app| {
-            info!("QuickSpace starting...");
+            info!("SpaceRabbit starting...");
             info!("Registered Alt+H (left), Alt+L (right), Alt+E (mission control), and Alt+Tab (window cycling) global hotkeys");
 
             let app_handle = app.handle();
@@ -148,7 +148,7 @@ fn main() {
                 cursor_monitor_thread(app_handle_cursor, state_cursor);
             });
 
-            info!("QuickSpace is now running in the background.");
+            info!("SpaceRabbit is now running in the background.");
             info!("   Alt+H: Switch to left workspace");
             info!("   Alt+L: Switch to right workspace");
             info!("   Alt+E: Toggle Mission Control");

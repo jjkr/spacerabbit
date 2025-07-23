@@ -1,10 +1,10 @@
 # Version Management Guide
 
-This document explains the automated version management system for QuickSpace, which ensures version consistency across all project files.
+This document explains the automated version management system for SpaceRabbit, which ensures version consistency across all project files.
 
 ## Overview
 
-QuickSpace uses **package.json as the single source of truth** for versioning. All other version files are automatically synchronized to match the version in package.json.
+SpaceRabbit uses **package.json as the single source of truth** for versioning. All other version files are automatically synchronized to match the version in package.json.
 
 ### Files Managed
 

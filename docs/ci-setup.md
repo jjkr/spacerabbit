@@ -1,6 +1,6 @@
-# CI/CD Setup Guide for QuickSpace
+# CI/CD Setup Guide for SpaceRabbit
 
-This guide explains how to set up GitHub Actions for building and distributing your QuickSpace Tauri app.
+This guide explains how to set up GitHub Actions for building and distributing your SpaceRabbit Tauri app.
 
 ## Overview
 
@@ -68,9 +68,9 @@ You can also trigger builds manually:
 ### Release Builds
 The workflow creates three separate DMG files for maximum compatibility:
 
-- `QuickSpace_v1.0.0_universal.dmg` - Universal binary (Intel + Apple Silicon) - **Recommended**
-- `QuickSpace_v1.0.0_aarch64.dmg` - Apple Silicon only (M1/M2/M3) - Smaller file size
-- `QuickSpace_v1.0.0_x64.dmg` - Intel only - For older Macs
+- `SpaceRabbit_v1.0.0_universal.dmg` - Universal binary (Intel + Apple Silicon) - **Recommended**
+- `SpaceRabbit_v1.0.0_aarch64.dmg` - Apple Silicon only (M1/M2/M3) - Smaller file size
+- `SpaceRabbit_v1.0.0_x64.dmg` - Intel only - For older Macs
 
 **Note**: The universal binary is recommended for most users as it works on all Mac architectures.
 
@@ -84,7 +84,7 @@ The workflow creates three separate DMG files for maximum compatibility:
 Since your app uses private APIs and isn't notarized, users need to:
 
 1. **Download** the appropriate DMG for their Mac architecture
-2. **Open** the DMG and drag QuickSpace to Applications
+2. **Open** the DMG and drag SpaceRabbit to Applications
 3. **Right-click** the app in Applications and select "Open"
 4. **Click "Open"** when macOS shows the security warning
 5. **Grant permissions** for Accessibility and Input Monitoring when prompted
@@ -123,7 +123,7 @@ npm run tauri build -- --target universal-apple-darwin
 
 ## Entitlements and Permissions
 
-QuickSpace requires specific macOS entitlements to function properly when distributed:
+SpaceRabbit requires specific macOS entitlements to function properly when distributed:
 
 ### Required Entitlements
 - `com.apple.security.automation.apple-events` - For accessibility features and workspace switching

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Test build script for QuickSpace
+# Test build script for SpaceRabbit
 # This script helps you test the build process locally before pushing to GitHub
 
 set -e
 
-echo "🚀 Testing QuickSpace build process..."
+echo "🚀 Testing SpaceRabbit build process..."
 
 # Check prerequisites
 echo "📋 Checking prerequisites..."
@@ -45,7 +45,7 @@ echo "✅ All tests passed"
 cd ..
 
 # Build the app
-echo "🔨 Building QuickSpace..."
+echo "🔨 Building SpaceRabbit..."
 echo "   This may take a few minutes..."
 
 # Build for current architecture first (faster)

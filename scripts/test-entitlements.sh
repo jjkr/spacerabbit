@@ -1,35 +1,35 @@
 #!/bin/bash
 
-# Test script to verify entitlements are properly applied to QuickSpace builds
+# Test script to verify entitlements are properly applied to SpaceRabbit builds
 # This script helps debug hotkey issues by checking code signing and entitlements
 
 set -e
 
-echo "🔍 QuickSpace Entitlements Test Script"
+echo "🔍 SpaceRabbit Entitlements Test Script"
 echo "======================================"
 
-# Find the QuickSpace app bundle
+# Find the SpaceRabbit app bundle
 APP_PATH=""
 
 # Check common locations
 LOCATIONS=(
-    "./src-tauri/target/release/bundle/macos/QuickSpace.app"
-    "./src-tauri/target/universal-apple-darwin/release/bundle/macos/QuickSpace.app"
-    "./src-tauri/target/aarch64-apple-darwin/release/bundle/macos/QuickSpace.app"
-    "./src-tauri/target/x86_64-apple-darwin/release/bundle/macos/QuickSpace.app"
-    "/Applications/QuickSpace.app"
+    "./src-tauri/target/release/bundle/macos/SpaceRabbit.app"
+    "./src-tauri/target/universal-apple-darwin/release/bundle/macos/SpaceRabbit.app"
+    "./src-tauri/target/aarch64-apple-darwin/release/bundle/macos/SpaceRabbit.app"
+    "./src-tauri/target/x86_64-apple-darwin/release/bundle/macos/SpaceRabbit.app"
+    "/Applications/SpaceRabbit.app"
 )
 
 for location in "${LOCATIONS[@]}"; do
     if [ -d "$location" ]; then
         APP_PATH="$location"
-        echo "✅ Found QuickSpace at: $APP_PATH"
+        echo "✅ Found SpaceRabbit at: $APP_PATH"
         break
     fi
 done
 
 if [ -z "$APP_PATH" ]; then
-    echo "❌ QuickSpace.app not found. Please build the app first:"
+    echo "❌ SpaceRabbit.app not found. Please build the app first:"
     echo "   npm run tauri build"
     echo "   or"
     echo "   npm run tauri build -- --target universal-apple-darwin"
@@ -105,7 +105,7 @@ echo "🔧 System Permissions Check"
 echo "=========================="
 
 # Check if the app has accessibility permissions
-echo "Checking system permissions for QuickSpace..."
+echo "Checking system permissions for SpaceRabbit..."
 
 # Get the app's bundle identifier
 BUNDLE_ID=$(defaults read "$APP_PATH/Contents/Info.plist" CFBundleIdentifier 2>/dev/null || echo "unknown")

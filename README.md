@@ -1,13 +1,13 @@
 <p align="center">
-  <img height="150" src="https://github.com/jjkr/quickspace/blob/main/src-tauri/icons/Square150x150Logo.png">
+  <img height="150" src="https://github.com/jjkr/spacerabbit/blob/main/src-tauri/icons/Square150x150Logo.png">
 </p>
 
-<h1 align="center">QuickSpace</h1>
+<h1 align="center">SpaceRabbit</h1>
 
 <p align="center">Fast workspace navigation for macOS.</p>
 
 ## Install
-Get the latest installer [HERE](https://github.com/jjkr/quickspace/releases/latest).
+Get the latest installer [HERE](https://github.com/jjkr/spacerabbit/releases/latest).
 
 ## Features
 
@@ -51,7 +51,7 @@ This project uses GitHub Actions for automated building and releasing:
 
 ### Creating a Release
 
-QuickSpace uses automated version management with `package.json` as the single source of truth:
+SpaceRabbit uses automated version management with `package.json` as the single source of truth:
 
 1. **Bump the version** using npm scripts:
    ```bash
@@ -96,7 +96,7 @@ See [docs/ci-setup.md](docs/ci-setup.md) for detailed setup instructions.
 ## Usage
 
 1. Run the app - it will start in the background with no visible window
-2. Look for the QuickSpace icon in your system tray
+2. Look for the SpaceRabbit icon in your system tray
 3. Press Alt+L (Option+L) anywhere on your Mac to go to the next workspace instantly!
 
 ## Replacing icons

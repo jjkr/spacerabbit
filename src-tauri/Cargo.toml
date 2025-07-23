@@ -1,5 +1,5 @@
 [package]
-name = "quickspace"
+name = "spacerabbit"
 version = "0.9.12"
 description = "Simple Tauri app with global hotkey support"
 authors = ["you"]
@@ -36,5 +36,5 @@ lazy_static = "1.4"
 custom-protocol = ["tauri/custom-protocol"]
 
 [[bin]]
-name = "quickspace"
+name = "spacerabbit"
 path = "src/main.rs"

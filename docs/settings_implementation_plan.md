@@ -1,8 +1,8 @@
-# QuickSpace Settings Implementation Plan
+# SpaceRabbit Settings Implementation Plan
 
 ## Overview
 
-This document outlines the complete implementation plan for adding a modern settings interface to the QuickSpace workspace switcher app. The implementation will transform the current basic HTML frontend into a React + Vite + TypeScript application with a native macOS window containing a modern dark web UI.
+This document outlines the complete implementation plan for adding a modern settings interface to the SpaceRabbit workspace switcher app. The implementation will transform the current basic HTML frontend into a React + Vite + TypeScript application with a native macOS window containing a modern dark web UI.
 
 ## Current State Analysis
 
@@ -384,4 +384,4 @@ src/
 - Test auto-save thoroughly to prevent data loss
 - Maintain existing functionality during migration
 
-This plan provides a comprehensive roadmap for implementing a modern, professional settings interface for QuickSpace while maintaining all existing functionality and following current best practices for React, TypeScript, and Tauri development.
+This plan provides a comprehensive roadmap for implementing a modern, professional settings interface for SpaceRabbit while maintaining all existing functionality and following current best practices for React, TypeScript, and Tauri development.

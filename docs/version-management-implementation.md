@@ -1,6 +1,6 @@
 # Version Management Implementation Summary
 
-This document summarizes the automated version management system implemented for QuickSpace.
+This document summarizes the automated version management system implemented for SpaceRabbit.
 
 ## Problem Solved
 
