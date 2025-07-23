@@ -1,3 +1,4 @@
+use crate::window_manager::get_current_workspace_windows;
 use core_foundation::array::{CFArrayGetCount, CFArrayGetValueAtIndex, CFArrayRef};
 use core_foundation::base::{CFRelease, CFTypeRef};
 use core_foundation::dictionary::CFDictionaryRef;
@@ -512,6 +513,7 @@ pub fn activate_mission_control() -> Result<(), String> {
     // Sleep to allow system to register the position change
     thread::sleep(Duration::from_millis(5));
 
+    // Move to 60 with an event that will trigger desktop thumbnails
     unsafe {
         let top_point = CGPoint::new(60.0, TOP_EDGE_OFFSET);
         // Create and post a "mouse moved" event (trying to fix desktop thumbnails not appearing)
@@ -532,10 +534,53 @@ pub fn activate_mission_control() -> Result<(), String> {
     send_gesture_event(&event_source, 2, 2, true)?;
     send_gesture_event(&event_source, 4, 2, true)?;
 
+    unsafe {
+        let top_point = CGPoint::new(70.0, TOP_EDGE_OFFSET);
+        // Create and post a "mouse moved" event (trying to fix desktop thumbnails not appearing)
+        let move_evt: CGEventRef = CGEventCreateMouseEvent(
+            std::ptr::null(), // No event source, use system default
+            kCGEventMouseMoved,
+            top_point,
+            kCGMouseButtonLeft,
+        );
+        CGEventPost(kCGHIDEventTap, move_evt);
+        CFRelease(move_evt);
+    }
+
     // Wait for desktop thumbnails to appear
-    thread::sleep(Duration::from_millis(5));
-    // Restore original mouse position
-    restore_mouse_position(original_position)?;
+    thread::sleep(Duration::from_millis(100));
+    let windows = get_current_workspace_windows()?;
+    if windows.is_empty() {
+        // Restore original mouse position if the desktop is empty
+        debug!("No windows found on current workspace, restoring mouse position");
+        restore_mouse_position(original_position)?;
+    } else {
+        // Get the center point of the first window
+        if let Some(first_window) = windows.first() {
+            let window_rect = first_window.bounds;
+            let center_x = window_rect.0 + window_rect.2 / 2.0;
+            let center_y = window_rect.1 + window_rect.3 / 2.0 + 20.0; // Shift down so the pointer sits below the label
+            // Move mouse to the center of the first window
+            //move_mouse_to_position(center_x, center_y)?;
+            unsafe {
+                let window_center = CGPoint::new(center_x, center_y);
+                // Create and post a "mouse moved" event (to focus top window)
+                let move_evt: CGEventRef = CGEventCreateMouseEvent(
+                    std::ptr::null(), // No event source, use system default
+                    kCGEventMouseMoved,
+                    window_center,
+                    kCGMouseButtonLeft,
+                );
+                CGEventPost(kCGHIDEventTap, move_evt);
+                CFRelease(move_evt);
+            }
+        }
+
+        // Print all the windows found in the current workspace
+        for window in windows {
+            info!("Window: {:?}", window);
+        }
+    }
 
     Ok(())
 }

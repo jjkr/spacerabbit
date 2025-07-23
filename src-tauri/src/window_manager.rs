@@ -6,7 +6,7 @@ use core_foundation::array::{CFArray, CFArrayGetCount, CFArrayGetValueAtIndex, C
 use core_foundation::base::{CFGetTypeID, CFRelease, CFShow, CFTypeRef};
 use core_foundation::boolean::{kCFBooleanTrue, CFBooleanRef};
 use core_foundation::dictionary::{
-    kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks, CFDictionaryCreate,
+    kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks, CFDictionaryGetTypeID, CFDictionaryCreate,
     CFDictionaryGetCount, CFDictionaryGetKeysAndValues, CFDictionaryGetValue, CFDictionaryRef,
 };
 use core_foundation::number::{
@@ -192,6 +192,17 @@ fn get_ax_window_bounds(window: AXUIElementRef) -> (f64, f64, f64, f64) {
             // Check if it's actually a dictionary before treating it as one
             let type_id = CFGetTypeID(frame_value);
             debug!("AXFrame value TypeID: {}", type_id);
+            debug!("Dictionary TypeID: {}", CFDictionaryGetTypeID());
+            // If it's a dictionary, we can extract bounds from it  
+            if type_id == CFDictionaryGetTypeID() {
+                let bounds_dict = frame_value as CFDictionaryRef;
+                let x = get_dict_number(bounds_dict, "X") as f64;
+                let y = get_dict_number(bounds_dict, "Y") as f64;
+                let width = get_dict_number(bounds_dict, "Width") as f64;
+                let height = get_dict_number(bounds_dict, "Height") as f64;
+                debug!("Returning bounds from AXFrame: ({}, {}, {}, {})", x, y, width, height);
+                return (x, y, width, height);
+            }
 
             // For now, just release and fall back to position/size approach
             CFRelease(frame_value);
@@ -915,70 +926,78 @@ pub fn cycle_next_window() -> Result<(), String> {
     debug!("DEBUG: Accessibility permission OK");
 
     // Get all visible layer-0 window numbers in front-to-back order
-    let window_numbers = get_visible_window_numbers()?;
+    let windows = get_current_workspace_windows()?;
 
-    if window_numbers.is_empty() {
+    if windows.is_empty() {
         debug!("DEBUG: No visible windows found, aborting");
         return Err("No visible windows found".to_string());
     }
 
-    debug!("DEBUG: Found {} visible windows", window_numbers.len());
+    debug!("DEBUG: Found {} visible windows", windows.len());
 
-    if window_numbers.len() == 1 {
+    if windows.len() == 1 {
         // Only one window, focus it
         debug!(
-            "DEBUG: Only one window available, focusing it: {}",
-            window_numbers[0]
+            "DEBUG: Only one window available, doing nothing: {}, {}",
+            windows[0].app_name, windows[0].title
         );
-        return focus_window_by_number(window_numbers[0]);
+        return Ok(());
     }
 
-    // Get the current focused window number
-    let current_window_number = match get_focused_window_number() {
-        Ok(num) => {
-            debug!("DEBUG: Current focused window: {}", num);
-            num
-        }
-        Err(e) => {
-            debug!(
-                "DEBUG: Could not get focused window ({}), focusing first available: {}",
-                e, window_numbers[0]
-            );
-            // If we can't get the focused window, just focus the first one
-            return focus_window_by_number(window_numbers[0]);
-        }
-    };
-
-    // Find the current window in our list and pick the next one
-    let current_index = window_numbers
-        .iter()
-        .position(|&num| num == current_window_number);
-    let next_index = match current_index {
-        Some(idx) => {
-            let next = (idx + 1) % window_numbers.len();
-            debug!(
-                "DEBUG: Current window {} is at index {}, next index: {}",
-                current_window_number, idx, next
-            );
-            next
-        }
-        None => {
-            debug!(
-                "DEBUG: Current window {} not found in visible list, starting from beginning",
-                current_window_number
-            );
-            0 // Current window not found, start from beginning
-        }
-    };
-
-    let target_window_number = window_numbers[next_index];
-    debug!("DEBUG: Target window to focus: {}", target_window_number);
-
-    let result = focus_window_by_number(target_window_number);
+    let result = focus_window_by_number(windows[1].window_id as i32);
     match &result {
         Ok(_) => debug!("DEBUG: ========== Window cycling completed successfully =========="),
         Err(e) => debug!("DEBUG: ========== Window cycling failed: {} ==========", e),
     }
 
     result
+
+    // // Get the current focused window number
+    // let current_window_number = match get_focused_window_number() {
+    //     Ok(num) => {
+    //         debug!("DEBUG: Current focused window: {}", num);
+    //         num
+    //     }
+    //     Err(e) => {
+    //         debug!(
+    //             "DEBUG: Could not get focused window ({}), focusing first available: {}",
+    //             e, windows[0].window_id
+    //         );
+    //         // If we can't get the focused window, just focus the first one
+    //         return focus_window_by_number(window_numbers[0]);
+    //     }
+    // };
+
+    // // Find the current window in our list and pick the next one
+    // let current_index = window_numbers
+    //     .iter()
+    //     .position(|&num| num == current_window_number);
+    // let next_index = match current_index {
+    //     Some(idx) => {
+    //         let next = (idx + 1) % window_numbers.len();
+    //         debug!(
+    //             "DEBUG: Current window {} is at index {}, next index: {}",
+    //             current_window_number, idx, next
+    //         );
+    //         next
+    //     }
+    //     None => {
+    //         debug!(
+    //             "DEBUG: Current window {} not found in visible list, starting from beginning",
+    //             current_window_number
+    //         );
+    //         0 // Current window not found, start from beginning
+    //     }
+    // };
+
+    // let target_window_number = window_numbers[next_index];
+    // debug!("DEBUG: Target window to focus: {}", target_window_number);
+
+    // let result = focus_window_by_number(target_window_number);
+    // match &result {
+    //     Ok(_) => debug!("DEBUG: ========== Window cycling completed successfully =========="),
+    //     Err(e) => debug!("DEBUG: ========== Window cycling failed: {} ==========", e),
+    // }
+
+    // result
 }

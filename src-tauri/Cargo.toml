@@ -1,6 +1,6 @@
 [package]
 name = "spacerabbit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Simple Tauri app with global hotkey support"
 authors = ["jjkr"]
 license = ""
