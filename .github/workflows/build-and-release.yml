@@ -75,6 +75,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Extract version from tag and sync
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Extracted version: $VERSION"
+          
+          # Update package.json version
+          npm version $VERSION --no-git-tag-version
+          
+          # Sync to all other files
+          npm run version:sync
+          
+          # Verify all versions are in sync
+          npm run version:check
+
       - name: Build Universal Binary
         uses: tauri-apps/tauri-action@v0
         env:
@@ -109,6 +124,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Extract version from tag and sync
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Extracted version: $VERSION"
+          
+          # Update package.json version
+          npm version $VERSION --no-git-tag-version
+          
+          # Sync to all other files
+          npm run version:sync
+          
+          # Verify all versions are in sync
+          npm run version:check
+
       - name: Build Apple Silicon Binary
         uses: tauri-apps/tauri-action@v0
         env:
@@ -142,6 +172,21 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Extract version from tag and sync
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "Extracted version: $VERSION"
+          
+          # Update package.json version
+          npm version $VERSION --no-git-tag-version
+          
+          # Sync to all other files
+          npm run version:sync
+          
+          # Verify all versions are in sync
+          npm run version:check
 
       - name: Build Intel Binary
         uses: tauri-apps/tauri-action@v0

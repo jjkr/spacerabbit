@@ -51,13 +51,38 @@ This project uses GitHub Actions for automated building and releasing:
 
 ### Creating a Release
 
-1. Update version in `package.json` and `src-tauri/Cargo.toml`
-2. Create and push a version tag:
+QuickSpace uses automated version management with `package.json` as the single source of truth:
+
+1. **Bump the version** using npm scripts:
    ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
+   # Patch version (0.9.0 → 0.9.1)
+   npm run version:patch
+   
+   # Minor version (0.9.0 → 0.10.0)  
+   npm run version:minor
+   
+   # Major version (0.9.0 → 1.0.0)
+   npm run version:major
    ```
-3. GitHub Actions will automatically build and create a release with DMG files
+
+2. **Push the changes and tag**:
+   ```bash
+   git push origin main
+   git push origin --tags
+   ```
+
+3. **GitHub Actions automatically**:
+   - Extracts version from the git tag
+   - Updates all version files to match
+   - Builds and creates a release with DMG files
+
+**Alternative**: Create a tag manually and let CI sync the versions:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+For more details, see [docs/version-management.md](docs/version-management.md).
 
 ### Code Signing Setup
 

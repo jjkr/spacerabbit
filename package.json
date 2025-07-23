@@ -4,7 +4,14 @@
   "description": "Simple Tauri app with global hotkey support",
   "main": "src/main.js",
   "scripts": {
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "version:sync": "node scripts/sync-version.js",
+    "version:patch": "npm version patch && npm run version:sync",
+    "version:minor": "npm version minor && npm run version:sync",
+    "version:major": "npm version major && npm run version:sync",
+    "version:check": "node scripts/check-version-sync.js",
+    "setup:hooks": "bash scripts/setup-git-hooks.sh",
+    "postinstall": "npm run setup:hooks"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0"

@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# Pre-commit hook to ensure version consistency
+# This hook runs before each commit to verify all version files are synchronized
+#
+
+echo "🔍 Checking version consistency..."
+
+# Run the version check
+npm run version:check
+
+# Check the exit code
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Version check failed!"
+    echo "💡 Run 'npm run version:sync' to fix version mismatches"
+    echo "   Then stage and commit the changes"
+    exit 1
+fi
+
+echo "✅ Version check passed"
+exit 0
