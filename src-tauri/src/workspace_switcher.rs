@@ -1,7 +1,3 @@
-use crate::cf_utils::{
-    cfstring_to_string, create_cfstring, get_dict_bounds, get_dict_number, get_dict_string,
-    print_full_dictionary,
-};
 use core_foundation::array::{CFArrayGetCount, CFArrayGetValueAtIndex, CFArrayRef};
 use core_foundation::base::{CFRelease, CFTypeRef};
 use core_foundation::dictionary::CFDictionaryRef;
@@ -69,22 +65,8 @@ extern "C" {
 // CONSTANTS AND TYPES
 // =============================================================================
 
-// Gesture timing and movement
-const SWIPE_MOVEMENT_DELTA: f64 = 3.0;
-const GESTURE_PHASE_DELAY_MICROS: u64 = 200;
-const POSITION_SCALE_FACTOR: f64 = 400.0;
-
-// Mouse movement constants
-const MISSION_CONTROL_ACTIVATION_DELAY_MS: u64 = 250;
-const DESKTOP_THUMBNAILS_TRIGGER_DELAY_MS: u64 = 100;
 const TOP_EDGE_OFFSET: f64 = 20.0; // Pixels from top edge to trigger desktop thumbnails
 
-// Core Graphics mouse event types
-const KCG_EVENT_MOUSE_MOVED: u32 = 5;
-const KCG_EVENT_TAP_DISABLED_BY_TIMEOUT: u32 = 0xFFFFFFFE;
-const KCG_EVENT_TAP_DISABLED_BY_USER_INPUT: u32 = 0xFFFFFFFF;
-
-// Core Graphics event constants
 const kCGEventMouseMoved: u32 = 5;
 const kCGMouseButtonLeft: u32 = 0;
 const kCGHIDEventTap: u32 = 0;
@@ -425,71 +407,6 @@ pub fn move_mouse_to_position(x: f64, y: f64) -> Result<(), String> {
             ))
         }
     }
-}
-
-/// Move mouse to the top edge of the current display to trigger desktop thumbnails
-///
-/// This function determines the current display bounds and moves the mouse to a position
-/// near the top edge that will trigger macOS to show desktop thumbnails in Mission Control.
-///
-/// # Returns
-/// * `Ok(original_position)` with the mouse's original position, or an error message
-pub fn activate_mission_control_thumbnails() -> Result<(), String> {
-    unsafe {
-        // Compute a point along the very top of the main screen
-        let main_disp: CGDirectDisplayID = CGMainDisplayID();
-        let width = CGDisplayPixelsWide(main_disp);
-        let height = CGDisplayPixelsHigh(main_disp);
-
-        debug!(
-            "Moving mouse to top edge: width={}, height={}",
-            width, height
-        );
-
-        // Shake the mouse
-        for i in 0..3 {
-            //let shake_point = CGPoint::new();
-            //let shake_evt: CGEventRef = CGEventCreateMouseEvent(
-            //    std::ptr::null(), // No event source, use system default
-            //    kCGEventMouseMoved,
-            //    shake_point,
-            //    kCGMouseButtonLeft
-            //);
-            //CGEventPost(kCGHIDEventTap, shake_evt);
-            //CFRelease(shake_evt);
-            thread::sleep(Duration::from_millis(20));
-
-            move_mouse_to_position(width as f64, TOP_EDGE_OFFSET + (i % 2) as f64 * 10.0)?;
-        }
-
-        // Top‐center, just below the menu bar (y=height−1 is screen top)
-        //let hover_point: CGPoint = CGPoint::new((width / 8) as f64, 20 as f64);
-
-        //// Create and post a "mouse moved" event
-        //let move_evt: CGEventRef = CGEventCreateMouseEvent(
-        //    std::ptr::null(), // No event source, use system default
-        //    kCGEventMouseMoved,
-        //    hover_point,
-        //    kCGMouseButtonLeft
-        //);
-        //CGEventPost(kCGHIDEventTap, move_evt);
-        //CFRelease(move_evt);
-
-        //// Middle point of screen
-        //let middle_point: CGPoint = CGPoint::new((width / 2) as f64, (height / 2) as f64);
-
-        //// Create and post a "mouse moved" event
-        //let center_mouse_evt: CGEventRef = CGEventCreateMouseEvent(
-        //    std::ptr::null(), // No event source, use system default
-        //    kCGEventMouseMoved,
-        //    middle_point,
-        //    kCGMouseButtonLeft
-        //);
-        //CGEventPost(kCGHIDEventTap, center_mouse_evt);
-        //CFRelease(center_mouse_evt);
-    }
-
-    Ok(())
 }
 
 /// Restore mouse cursor to its original position
