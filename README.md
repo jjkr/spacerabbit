@@ -112,7 +112,7 @@ npm run tauri -- icon src-tauri/icons/OriginalLogo.png
 ### Required Permissions
 
 The app requires these macOS permissions:
-- **Accessibility**: For global hotkeys and workspace switching
+- **Accessibility**: For global hotkeys and workspace switching. For development, your terminal application needs accesibility permissions.
 - **Input Monitoring**: For detecting keyboard shortcuts
 
 Grant these in System Preferences > Security & Privacy > Privacy when prompted.

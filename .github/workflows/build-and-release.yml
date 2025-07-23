@@ -24,30 +24,18 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: '${{ github.ref_name }}',
-              name: 'QuickSpace ${{ github.ref_name }}',
-              body: `## QuickSpace ${{ github.ref_name }}
-            
-            ### Installation Instructions
-            
+              name: 'SpaceRabbit ${{ github.ref_name }}',
+              body: `## SpaceRabbit ${{ github.ref_name }}
+
             #### Choose Your Download:
-            - **Universal Binary** (\`QuickSpace_${{ github.ref_name }}_universal.dmg\`) - Works on both Intel and Apple Silicon Macs (recommended)
-            - **Apple Silicon** (\`QuickSpace_${{ github.ref_name }}_aarch64.dmg\`) - Optimized for M1/M2/M3 Macs
-            - **Intel** (\`QuickSpace_${{ github.ref_name }}_x64.dmg\`) - For Intel-based Macs
-            
-            #### Installation Steps:
-            1. Download the appropriate DMG file for your Mac
-            2. Open the DMG and drag QuickSpace to Applications
-            3. Right-click the app and select "Open" (required for first launch)
-            4. Click "Open" when macOS warns about the unidentified developer
-            
-            #### Permissions Required:
-            - **Accessibility**: For global hotkeys and workspace switching
-            - **Input Monitoring**: For detecting keyboard shortcuts
-            
+            - **Apple Silicon** (\`SpaceRabbit_${{ github.ref_name }}_aarch64.dmg\`) - Optimized for M1/M2/M3 Macs (recommended)
+            - **Universal Binary** (\`SpaceRabbit_${{ github.ref_name }}_universal.dmg\`) - Works on both Intel and Apple Silicon Macs
+            - **Intel** (\`SpaceRabbit_${{ github.ref_name }}_x64.dmg\`) - For Intel-based Macs
+
             Grant these permissions in System Preferences > Security & Privacy > Privacy when prompted.
-            
+
             ### What's New
-            - Add your release notes here`,
+            - Bug fixes and performance improvements`,
               draft: true,
               prerelease: false
             });
@@ -82,8 +70,8 @@ jobs:
           echo "Extracted version: $VERSION"
           
           # Update package.json version
-          npm version $VERSION --no-git-tag-version
-          
+          npm version $VERSION --allow-same-version --no-git-tag-version
+
           # Sync to all other files
           npm run version:sync
           
