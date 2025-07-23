@@ -1,0 +1,35 @@
+[build]
+# Enable incremental compilation for faster rebuilds
+incremental = true
+
+# Configure build cache
+target-dir = "target"
+
+
+# Optimize for faster compilation during development
+[profile.dev]
+# Reduce optimization level for faster compilation
+opt-level = 0
+# Enable debug info but reduce it for faster linking
+debug = 1
+# Disable overflow checks for faster compilation
+overflow-checks = false
+# Use faster but less precise debug info
+debug-assertions = false
+
+# Speed up build times by reducing codegen units
+codegen-units = 256
+
+[profile.release]
+# Keep some optimizations but improve incremental build times
+incremental = true
+# Reduce codegen units for better optimization but slower initial builds
+codegen-units = 1
+
+# Configure cargo to use faster compilation settings
+[cargo-new]
+vcs = "git"
+
+# Enable sparse registry for faster dependency resolution
+[registries.crates-io]
+protocol = "sparse"

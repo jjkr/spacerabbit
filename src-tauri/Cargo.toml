@@ -13,27 +13,72 @@ edition = "2021"
 tauri-build = { version = "2.3", features = [] }
 
 [dependencies]
-tauri = { version = "2.3", features = [ "tray-icon", "macos-private-api"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tauri-plugin-shell = "2.3"
-tauri-plugin-log = "2.0"
-log = "0.4"
-global-hotkey = "0.4"
-tokio = { version = "1", features = ["full"] }
+# Optimize Tauri features - only include what you need
+tauri = { version = "2.3", features = ["tray-icon", "macos-private-api"] }
+serde = { version = "1.0", features = ["derive"], default-features = false }
+serde_json = { version = "1.0", default-features = false }
+tauri-plugin-shell = { version = "2.3", default-features = false }
+tauri-plugin-log = { version = "2.0", default-features = false }
+log = { version = "0.4", default-features = false }
+global-hotkey = { version = "0.4", default-features = false }
+# Optimize tokio features - only include what you actually use
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"], default-features = false }
 # Added for macOS workspace switching
-core-graphics = "0.23"
-core-foundation = "0.9"
-foreign-types-shared = "0.3"
-libc = "0.2"
+core-graphics = { version = "0.23", default-features = false }
+core-foundation = { version = "0.9", default-features = false }
+foreign-types-shared = { version = "0.3", default-features = false }
+libc = { version = "0.2", default-features = false }
 # Added for Cocoa mouse position
-cocoa = "0.25"
-lazy_static = "1.4"
+cocoa = { version = "0.25", default-features = false }
+lazy_static = { version = "1.4", default-features = false }
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
 # DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+# Optimized build profiles for faster compilation
+[profile.dev]
+# Fast compilation for development
+opt-level = 0
+debug = true
+split-debuginfo = "unpacked"
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+rpath = false
+
+[profile.release]
+# Optimized for production but with faster incremental builds
+opt-level = 3
+debug = false
+split-debuginfo = "packed"
+debug-assertions = false
+overflow-checks = false
+lto = "thin"
+panic = 'abort'
+incremental = true
+codegen-units = 1
+rpath = false
+
+# Fast development profile for quick iterations
+[profile.dev-fast]
+inherits = "dev"
+opt-level = 1
+debug = 1
+incremental = true
+codegen-units = 512
+
+# Fast release profile for testing optimized builds quickly
+[profile.release-fast]
+inherits = "release"
+opt-level = 2
+lto = false
+codegen-units = 16
+incremental = true
 
 [[bin]]
 name = "spacerabbit"

@@ -5,6 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "tauri": "tauri",
+    "clean": "rm -rf node_modules build src-tauri/target && npm install",
     "version:sync": "node scripts/sync-version.js",
     "version:patch": "npm version patch && npm run version:sync",
     "version:minor": "npm version minor && npm run version:sync",
