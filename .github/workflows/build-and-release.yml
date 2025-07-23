@@ -119,7 +119,7 @@ jobs:
           echo "Extracted version: $VERSION"
           
           # Update package.json version
-          npm version $VERSION --no-git-tag-version
+          npm version $VERSION --allow-same-version --no-git-tag-version
           
           # Sync to all other files
           npm run version:sync
@@ -168,7 +168,7 @@ jobs:
           echo "Extracted version: $VERSION"
           
           # Update package.json version
-          npm version $VERSION --no-git-tag-version
+          npm version $VERSION --allow-same-version --no-git-tag-version
           
           # Sync to all other files
           npm run version:sync
