@@ -1,6 +1,6 @@
 {
   "name": "spacerabbit",
-  "version": "0.9.12",
+  "version": "0.1.0",
   "description": "Fast keyboard workspace navigation for macOS",
   "main": "src/main.js",
   "scripts": {
