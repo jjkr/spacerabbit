@@ -383,6 +383,36 @@ pub fn get_desktop_bounds() -> Result<(u32, u32), String> {
 // MOUSE MOVEMENT FUNCTIONS
 // =============================================================================
 
+/// Create and post a synthetic mouse move event at the specified point
+///
+/// This function creates a CGEvent for mouse movement, posts it to the system,
+/// and properly releases the event memory. Used to trigger desktop thumbnails
+/// and focus windows in Mission Control.
+///
+/// # Arguments
+/// * `point` - The target position for the mouse move event
+///
+/// # Returns
+/// * `Ok(())` on success, or an error message if the event could not be created or posted
+fn post_mouse_move_event(point: CGPoint) -> Result<(), String> {
+    unsafe {
+        let move_evt: CGEventRef = CGEventCreateMouseEvent(
+            std::ptr::null(), // No event source, use system default
+            kCGEventMouseMoved,
+            point,
+            kCGMouseButtonLeft,
+        );
+        
+        if move_evt.is_null() {
+            return Err("Failed to create mouse move event".to_string());
+        }
+        
+        CGEventPost(kCGHIDEventTap, move_evt);
+        CFRelease(move_evt);
+    }
+    Ok(())
+}
+
 /// Move mouse cursor to specified coordinates using CGWarpMouseCursorPosition
 ///
 /// This function provides instant mouse teleportation to the target position.
@@ -514,18 +544,8 @@ pub fn activate_mission_control() -> Result<(), String> {
     thread::sleep(Duration::from_millis(5));
 
     // Move to 60 with an event that will trigger desktop thumbnails
-    unsafe {
-        let top_point = CGPoint::new(60.0, TOP_EDGE_OFFSET);
-        // Create and post a "mouse moved" event (trying to fix desktop thumbnails not appearing)
-        let move_evt: CGEventRef = CGEventCreateMouseEvent(
-            std::ptr::null(), // No event source, use system default
-            kCGEventMouseMoved,
-            top_point,
-            kCGMouseButtonLeft,
-        );
-        CGEventPost(kCGHIDEventTap, move_evt);
-        CFRelease(move_evt);
-    }
+    let top_point = CGPoint::new(60.0, TOP_EDGE_OFFSET);
+    post_mouse_move_event(top_point)?;
 
     thread::sleep(Duration::from_millis(5));
 
@@ -534,18 +554,8 @@ pub fn activate_mission_control() -> Result<(), String> {
     send_gesture_event(&event_source, 2, 2, true)?;
     send_gesture_event(&event_source, 4, 2, true)?;
 
-    unsafe {
-        let top_point = CGPoint::new(70.0, TOP_EDGE_OFFSET);
-        // Create and post a "mouse moved" event (trying to fix desktop thumbnails not appearing)
-        let move_evt: CGEventRef = CGEventCreateMouseEvent(
-            std::ptr::null(), // No event source, use system default
-            kCGEventMouseMoved,
-            top_point,
-            kCGMouseButtonLeft,
-        );
-        CGEventPost(kCGHIDEventTap, move_evt);
-        CFRelease(move_evt);
-    }
+    let top_point = CGPoint::new(70.0, TOP_EDGE_OFFSET);
+    post_mouse_move_event(top_point)?;
 
     // Wait for desktop thumbnails to appear
     thread::sleep(Duration::from_millis(100));
@@ -562,18 +572,8 @@ pub fn activate_mission_control() -> Result<(), String> {
             let center_y = window_rect.1 + window_rect.3 / 2.0 + 20.0; // Shift down so the pointer sits below the label
                                                                        // Move mouse to the center of the first window
                                                                        //move_mouse_to_position(center_x, center_y)?;
-            unsafe {
-                let window_center = CGPoint::new(center_x, center_y);
-                // Create and post a "mouse moved" event (to focus top window)
-                let move_evt: CGEventRef = CGEventCreateMouseEvent(
-                    std::ptr::null(), // No event source, use system default
-                    kCGEventMouseMoved,
-                    window_center,
-                    kCGMouseButtonLeft,
-                );
-                CGEventPost(kCGHIDEventTap, move_evt);
-                CFRelease(move_evt);
-            }
+            let window_center = CGPoint::new(center_x, center_y);
+            post_mouse_move_event(window_center)?;
         }
 
         // Print all the windows found in the current workspace

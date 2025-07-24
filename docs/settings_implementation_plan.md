@@ -23,7 +23,8 @@ This document outlines the complete implementation plan for adding a modern sett
 ### Frontend Stack
 - **React 18** with TypeScript for component-based UI
 - **Vite** for modern build tooling and hot reload
-- **Tailwind CSS** for styling with dark theme
+- **CSS Modules** with native macOS styling for authentic feel
+- **PostCSS** with nesting and modern CSS features
 - **Auto-save** settings on every change
 - **Native OS window** with modern web UI inside
 
@@ -67,9 +68,10 @@ This document outlines the complete implementation plan for adding a modern sett
     "@vitejs/plugin-react": "^4.0.0",
     "typescript": "^5.0.0",
     "vite": "^4.4.0",
-    "tailwindcss": "^3.3.0",
-    "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0"
+    "postcss": "^8.4.0",
+    "postcss-preset-env": "^9.0.0",
+    "postcss-nesting": "^12.0.0",
+    "postcss-modules": "^6.0.0"
   }
 }
 ```
@@ -82,9 +84,10 @@ tauri-plugin-store = "2.3"
 
 #### 1.3 Configuration Updates
 - [ ] Update `tauri.conf.json` window configuration
-- [ ] Configure Vite build process
+- [ ] Configure Vite build process with CSS Modules
 - [ ] Set up TypeScript configuration
-- [ ] Configure Tailwind CSS
+- [ ] Configure PostCSS with nesting and modern features
+- [ ] Create macOS native CSS variables and design tokens
 
 ### Phase 2: Settings Schema & Backend
 **Goal**: Create settings data structures and persistence layer
@@ -129,11 +132,21 @@ src/
 ├── main.tsx                 # React entry point
 ├── App.tsx                  # Main settings component
 ├── components/
-│   ├── SettingsLayout.tsx   # Main layout with dark theme
-│   ├── HotkeyInput.tsx      # Custom hotkey input component
-│   ├── ToggleSwitch.tsx     # Custom toggle component
-│   ├── SettingsSection.tsx  # Reusable section wrapper
-│   └── StatusIndicator.tsx  # Connection/save status
+│   ├── SettingsLayout/
+│   │   ├── SettingsLayout.tsx
+│   │   └── SettingsLayout.module.css
+│   ├── HotkeyInput/
+│   │   ├── HotkeyInput.tsx
+│   │   └── HotkeyInput.module.css
+│   ├── ToggleSwitch/
+│   │   ├── ToggleSwitch.tsx
+│   │   └── ToggleSwitch.module.css
+│   ├── SettingsSection/
+│   │   ├── SettingsSection.tsx
+│   │   └── SettingsSection.module.css
+│   └── StatusIndicator/
+│       ├── StatusIndicator.tsx
+│       └── StatusIndicator.module.css
 ├── hooks/
 │   ├── useSettings.ts       # Settings state management
 │   ├── useTauri.ts         # Tauri API wrapper
@@ -141,7 +154,9 @@ src/
 ├── types/
 │   └── settings.ts         # TypeScript interfaces
 └── styles/
-    └── globals.css         # Dark theme + custom styles
+    ├── globals.css         # Global styles and resets
+    ├── macos-variables.css # Native macOS design tokens
+    └── components.css      # Shared component styles
 ```
 
 #### 3.2 Key Components
@@ -224,13 +239,15 @@ useEffect(() => {
 ### Phase 6: UI Polish & UX
 **Goal**: Create professional, polished user experience
 
-#### 6.1 Dark Theme Design
-- **Color Palette**:
-  - Background: `bg-gray-900` (#111827)
-  - Cards: `bg-gray-800` (#1f2937)
-  - Text: `text-white` / `text-gray-300`
-  - Accents: `text-blue-400` / `bg-blue-600`
-  - Borders: `border-gray-700`
+#### 6.1 Native macOS Dark Theme Design
+- **Color Palette** (using native macOS colors):
+  - Background: `color(display-p3 0.11 0.11 0.12)` (systemBackground)
+  - Surface: `color(display-p3 0.16 0.16 0.18)` (secondarySystemBackground)
+  - Elevated: `color(display-p3 0.19 0.19 0.21)` (tertiarySystemBackground)
+  - Text Primary: `color(display-p3 0.98 0.98 0.98)` (labelColor)
+  - Text Secondary: `color(display-p3 0.78 0.78 0.80)` (secondaryLabelColor)
+  - Accent: `color(display-p3 0.0 0.48 1.0)` (systemBlue)
+  - Separator: `color(display-p3 0.27 0.27 0.30)` (separatorColor)
 
 #### 6.2 Visual Design Elements
 - [ ] Smooth animations for toggles and state changes
@@ -277,17 +294,18 @@ src/
 ├── main.tsx                 # React entry point
 ├── App.tsx                  # Main settings component
 ├── index.html               # Vite HTML template
-├── components/              # React components
+├── components/              # React components with CSS Modules
 ├── hooks/                   # Custom React hooks
 ├── types/                   # TypeScript type definitions
-└── styles/                  # CSS and styling
+└── styles/                  # Global CSS and design tokens
 
 src-tauri/src/
 ├── settings.rs              # Settings module
 └── (modifications to existing files)
 
 docs/
-└── settings_implementation_plan.md  # This file
+├── settings_implementation_plan.md  # This file
+└── macos-styling-guide.md           # Native macOS styling guide
 ```
 
 ### Files to Modify
@@ -384,4 +402,10 @@ src/
 - Test auto-save thoroughly to prevent data loss
 - Maintain existing functionality during migration
 
-This plan provides a comprehensive roadmap for implementing a modern, professional settings interface for SpaceRabbit while maintaining all existing functionality and following current best practices for React, TypeScript, and Tauri development.
+This plan provides a comprehensive roadmap for implementing a modern, professional settings interface for SpaceRabbit while maintaining all existing functionality and following current best practices for React, TypeScript, CSS Modules, and Tauri development.
+
+## Additional Resources
+
+- **[macOS Styling Guide](./macos-styling-guide.md)** - Comprehensive guide for native macOS styling with CSS Modules
+- **Apple Human Interface Guidelines** - For additional design reference
+- **CSS Modules Documentation** - For implementation details

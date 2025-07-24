@@ -243,11 +243,26 @@ fn hotkey_listener_thread(
                         }
                     }
                     id if id == hotkey_window_cycle.id() => {
-                        // Cycle to next window on current workspace
-                        if let Err(e) = window_manager::cycle_next_window() {
-                            error!("Failed to cycle to next window: {}", e);
+                        let is_mc_active = {
+                            let mut mc_active = state.mission_control_active.lock().unwrap();
+                            let current_state = *mc_active;
+                            *mc_active = !current_state;
+                            current_state
+                        };
+                        if is_mc_active {
+                            // Move mouse to the center of the first window on current workspace
+                            if let Err(e) = workspace_switcher::move_mouse_to_next_window() {
+                                error!("Failed to move mouse to first window: {}", e);
+                            } else {
+                                debug!("Moved mouse to first window on current workspace");
+                            }
                         } else {
-                            debug!("Cycled to next window");
+                            // Cycle to next window on current workspace
+                            if let Err(e) = window_manager::cycle_next_window() {
+                                error!("Failed to cycle to next window: {}", e);
+                            } else {
+                                debug!("Cycled to next window");
+                            }
                         }
                     }
                     _ => {
