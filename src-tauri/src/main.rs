@@ -246,17 +246,18 @@ fn hotkey_listener_thread(
                         let is_mc_active = {
                             let mut mc_active = state.mission_control_active.lock().unwrap();
                             let current_state = *mc_active;
-                            *mc_active = !current_state;
                             current_state
                         };
                         if is_mc_active {
-                            // Move mouse to the center of the first window on current workspace
+                            debug!("Mission Control is active, moving mouse to next window");
+                            // Move mouse to the center of the next window on current workspace
                             if let Err(e) = workspace_switcher::move_mouse_to_next_window() {
-                                error!("Failed to move mouse to first window: {}", e);
+                                error!("Failed to move mouse to next window: {}", e);
                             } else {
-                                debug!("Moved mouse to first window on current workspace");
+                                debug!("Moved mouse to next window on current workspace");
                             }
                         } else {
+                            debug!("Mission Control is inactive, cycling focus to next window");
                             // Cycle to next window on current workspace
                             if let Err(e) = window_manager::cycle_next_window() {
                                 error!("Failed to cycle to next window: {}", e);

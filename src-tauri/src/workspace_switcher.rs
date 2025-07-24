@@ -664,6 +664,128 @@ pub fn switch_workspace_right() -> Result<(), String> {
     switch_to_adjacent_workspace(true)
 }
 
+/// Move mouse to the next window in mission control
+///
+/// This function:
+/// 1. Gets the current mouse position
+/// 2. Gets all visible windows on the current workspace
+/// 3. Determines which window the mouse is currently in (or closest to)
+/// 4. Moves the mouse to the center of the next window in the array
+/// 5. Cycles back to the beginning when reaching the end
+pub fn move_mouse_to_next_window() -> Result<(), String> {
+    debug!("Starting move_mouse_to_next_window");
+    
+    // Get current mouse position
+    let current_mouse_pos = get_cursor_position()?;
+    debug!("Current mouse position: {:?}", current_mouse_pos);
+    
+    // Get all visible windows on current workspace
+    let windows = get_current_workspace_windows()?;
+    debug!("Found {} windows on current workspace", windows.len());
+    
+    if windows.is_empty() {
+        return Err("No windows found on current workspace".to_string());
+    }
+    
+    if windows.len() == 1 {
+        // Only one window, move mouse to its center
+        let window = &windows[0];
+        let center_x = window.bounds.0 + window.bounds.2 / 2.0;
+        let center_y = window.bounds.1 + window.bounds.3 / 2.0;
+        debug!("Only one window, moving to center: ({}, {})", center_x, center_y);
+        return move_mouse_to_position(center_x, center_y);
+    }
+    
+    // Print all windows found
+    for window in &windows {
+        debug!("Window: {:?}", window);
+    }
+    
+    // Find which window the mouse is currently in or closest to
+    let current_window_index = find_current_window_index(&windows, current_mouse_pos);
+    debug!("Current window index: {:?}", current_window_index);
+    
+    // Calculate next window index (cycle back to 0 if at end)
+    let mut next_index = match current_window_index {
+        Some(index) => (index + 1) % windows.len(),
+        None => 0, // If mouse isn't in any window, start with first window
+    };
+    
+    debug!("Next window index: {}", next_index);
+    if windows[next_index].app_name == "Dock" {
+        debug!("Next window is Dock, skipping to next");
+        // Skip Dock window if it's next
+        next_index = (next_index + 1) % windows.len();
+        debug!("Adjusted next index to: {}", next_index);
+    }
+    
+    // Move mouse to center of next window
+    let next_window = &windows[next_index];
+    let center_x = next_window.bounds.0 + next_window.bounds.2 / 2.0;
+    let center_y = next_window.bounds.1 + next_window.bounds.3 / 2.0;
+    
+    debug!("Moving mouse to window({:?}): {:?} at ({}, {})", 
+           next_index, next_window, center_x, center_y);
+    
+    post_mouse_move_event(CGPoint::new(center_x, center_y))
+}
+
+/// Find which window contains the mouse cursor or is closest to it
+///
+/// Returns the index of the window that contains the mouse cursor.
+/// If the mouse is not inside any window, returns the index of the closest window.
+/// If no windows are provided, returns None.
+fn find_current_window_index(windows: &[crate::window_manager::WindowInfo], mouse_pos: CGPoint) -> Option<usize> {
+    if windows.is_empty() {
+        return None;
+    }
+    
+    // First, check if mouse is inside any window
+    for (index, window) in windows.iter().enumerate() {
+        if is_point_in_window(mouse_pos, &window.bounds) {
+            debug!("Mouse is inside window {} ('{}')", index, window.title);
+            return Some(index);
+        }
+    }
+    
+    // If mouse is not inside any window, find the closest one
+    let mut closest_index = 0;
+    let mut closest_distance = f64::MAX;
+    
+    for (index, window) in windows.iter().enumerate() {
+        let distance = distance_to_window(mouse_pos, &window.bounds);
+        debug!("Distance to window {} ('{}'): {}", index, window.title, distance);
+        
+        if distance < closest_distance {
+            closest_distance = distance;
+            closest_index = index;
+        }
+    }
+    
+    debug!("Mouse is closest to window {} ('{}')", closest_index, windows[closest_index].title);
+    Some(closest_index)
+}
+
+/// Check if a point is inside a window's bounds
+fn is_point_in_window(point: CGPoint, bounds: &(f64, f64, f64, f64)) -> bool {
+    let (x, y, width, height) = *bounds;
+    point.x >= x && point.x <= x + width && point.y >= y && point.y <= y + height
+}
+
+/// Calculate the distance from a point to the nearest edge of a window
+fn distance_to_window(point: CGPoint, bounds: &(f64, f64, f64, f64)) -> f64 {
+    let (x, y, width, height) = *bounds;
+    
+    // Calculate distance to window center as a simple metric
+    let center_x = x + width / 2.0;
+    let center_y = y + height / 2.0;
+    
+    let dx = point.x - center_x;
+    let dy = point.y - center_y;
+    
+    (dx * dx + dy * dy).sqrt()
+}
+
 // Legacy function aliases for backward compatibility
 pub fn switch_left() -> Result<(), String> {
     switch_workspace_left()
